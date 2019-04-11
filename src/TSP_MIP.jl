@@ -141,6 +141,12 @@ function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance)
     return (tour = find_cycle(value.(tour_matrix)), cost = objective_value(m))
 end
 
+
+"""
+    simple_parse_tsp(filename; verbose = true)
+
+Try to parse the ".tsp" file given by `filename`. Very simple implementation just to be able to test the optimization; may break on other files. Returns a list of cities for use in `get_optimal_tour`.
+"""
 function simple_parse_tsp(filename; verbose = true)
     cities = []
     for line in readlines(filename)

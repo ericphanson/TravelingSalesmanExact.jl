@@ -9,7 +9,7 @@ makedocs(;
     repo="https://github.com/ericphanson/TSP_MIP.jl/blob/{commit}{path}#L{line}",
     sitename="TSP_MIP.jl",
     authors="Eric",
-    assets=[],
+    assets=nothing,
 )
 
 deploydocs(;
