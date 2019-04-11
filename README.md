@@ -4,7 +4,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TSP_MIP.jl/dev)
 [![Build Status](https://travis-ci.com/ericphanson/TSP_MIP.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TSP_MIP.jl)
 
-This is a simple Julia package to solve the travelling saleman problem using an adaptive XXX.
+This is a simple Julia package to solve the travelling saleman problem using an adaptive Dantzig-Fulkerson-Johnson algorithm.
 
 Requires Julia (<https://julialang.org/downloads/>).
 
