@@ -20,3 +20,5 @@ n = 50
 cities = [ [rand(1.0:100.0), rand(1.0:100.0)] for _ in 1:n];
 results = get_optimal_tour(cities)
 ```
+
+![Example](example.svg)
