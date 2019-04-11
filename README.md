@@ -4,7 +4,11 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TSP_MIP.jl/dev)
 [![Build Status](https://travis-ci.com/ericphanson/TSP_MIP.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TSP_MIP.jl)
 
-To install, add the package from github:
+This is a simple Julia package to solve the travelling saleman problem using an adaptive XXX.
+
+Requires Julia (<https://julialang.org/downloads/>).
+
+To install the package, add the package from GitHub:
 ```julia
 ] add https://github.com/ericphanson/TSP_MIP.jl
 ```
