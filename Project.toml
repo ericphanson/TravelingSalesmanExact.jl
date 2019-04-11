@@ -1,0 +1,10 @@
+name = "TSP_MIP"
+uuid = "737fac7d-4440-55ef-927e-002196e95561"
+authors = ["Eric <5846501+ericphanson@users.noreply.github.com>"]
+version = "0.1.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
