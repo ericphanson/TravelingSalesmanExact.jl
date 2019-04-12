@@ -1,6 +1,6 @@
 module TSP_MIP
 
-using JuMP, GLPK, UnicodePlots
+using JuMP, GLPK, UnicodePlots, Logging
 import MathOptInterface
 const MOI = MathOptInterface
 export get_optimal_tour, plot_cities, simple_parse_tsp
@@ -123,7 +123,7 @@ end
 
 
 """
-    get_optimal_tour(cities::AbstractVector; distance = euclidean_distance, optimizer = GLPK.Optimizer)
+    get_optimal_tour(cities::AbstractVector; verbose = true, distance = euclidean_distance, optimizer = GLPK.Optimizer)
 
 Solves the travelling salesman problem for a list of cities using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
@@ -131,7 +131,18 @@ formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour. Optionally specify a distance metric
 and an optimizer for JuMP.
 """
-function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance, optimizer = GLPK.Optimizer)
+function get_optimal_tour(cities::AbstractVector; verbose = true, distance = euclidean_distance, optimizer = GLPK.Optimizer)
+    if verbose
+        results = _get_optimal_tour_verbose(cities, distance, optimizer)
+    else
+        results = with_logger(NullLogger()) do
+            _get_optimal_tour_verbose(cities, distance, optimizer)
+        end
+    end
+    return results
+end
+
+function _get_optimal_tour_verbose(cities, distance, optimizer)
     N = length(cities)
 
     model = Model(with_optimizer(optimizer))
@@ -169,7 +180,6 @@ function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance,
     @info "Final problem has $(length(model.variable_to_zero_one)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
     return (tour = find_cycle(value.(tour_matrix)), cost = objective_value(model))
 end
-
 
 """
     simple_parse_tsp(filename; verbose = true)
