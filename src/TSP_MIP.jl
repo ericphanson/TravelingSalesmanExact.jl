@@ -3,11 +3,13 @@ module TSP_MIP
 using JuMP, GLPK, UnicodePlots
 import MathOptInterface
 const MOI = MathOptInterface
-
 export get_optimal_tour, plot_cities, simple_parse_tsp
+
+≈(x) = Base.Fix2(isapprox, x)
 
 """
     plot_cities(cities)
+
 Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in `cities`, in order (including going from the last city back to the first).
 """
 function plot_cities(cities)
@@ -23,13 +25,30 @@ Returns the cycle in the permutation described by `perm_matrix` which includes `
 """
 function find_cycle(perm_matrix, starting_ind = 1)
     cycle = [starting_ind]
+    prev_ind = ind = starting_ind
     while true
-        next_ind = findfirst(==(1.0), @views(perm_matrix[cycle[end], :]))        
+        next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, 1:prev_ind-1]))
+        if isnothing(next_ind)
+            next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
+        end
         next_ind == starting_ind && break
         push!(cycle, next_ind)
+        prev_ind, ind = ind, next_ind
     end
     cycle
 end
+
+# Simpler implementation with slightly more allocations:
+# function find_cycle(perm_matrix, starting_ind = 1)
+#     cycle = [starting_ind]
+#     while true
+#         new_inds = findall(≈(1.0), @views(perm_matrix[cycle[end], :]))
+#         diff = setdiff(new_inds, cycle)
+#         isempty(diff) && break
+#         append!(cycle, diff)
+#     end
+#     cycle
+# end
 
 """
     get_cycles(perm_matrix)
@@ -71,13 +90,24 @@ function remove_cycles!(m, tour_matrix)
     cycles = get_cycles(tour_matrix_val)
     length(cycles) == 1 && return 1
     for cycle in cycles
-        @constraint(m, sum(tour_matrix[cycle, cycle]) <= length(cycle)-1)
+        @constraint(m, sum(tour_matrix[cycle, cycle]) <= 2*length(cycle)-2)
     end
     return length(cycles)
 end
 
+"""
+    euclidean_distance(city1, city2)
+
+The usual Euclidean distance measure.
+"""
 euclidean_distance(city1, city2) = sqrt((city1[1] - city2[1])^2 + (city1[2] - city2[2])^2)
 
+"""
+    ATT(city1, city2)
+
+The `ATT` distance measure as specified in TSPLIB:
+<https://www.iwr.uni-heidelberg.de/groups/comopt/software/TSPLIB95/tsp95.pdf>.
+"""
 function ATT(city1, city2)
     xd = city1[1] - city2[1]
     yd = city1[2] - city2[2]
@@ -93,31 +123,28 @@ end
 
 
 """
-    get_optimal_tour(cost_matrix)
+    get_optimal_tour(cities::AbstractVector; distance = euclidean_distance, optimizer = GLPK.Optimizer)
 
 Solves the travelling salesman problem for a list of cities using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
-cycles. Returns an optimal tour.
+cycles. Returns an optimal tour. Optionally specify a distance metric
+and an optimizer for JuMP.
 """
-function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance)
+function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance, optimizer = GLPK.Optimizer)
     N = length(cities)
 
-    m = Model(with_optimizer(GLPK.Optimizer))
+    m = Model(with_optimizer(optimizer))
 
-    # `tour_matrix` will be a permutation matrix
-    @variable(m, tour_matrix[1:N,1:N], binary=true)
+    # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
+    @variable(m, tour_matrix[1:N,1:N], Symmetric, binary=true)
     
     # cost of the tour
-    @objective(m, Min, sum(tour_matrix[i,j]*distance(cities[i], cities[j]) for i=1:N,j=1:N))
-
+    @objective(m, Min, sum(tour_matrix[i,j]*distance(cities[i], cities[j]) for i=1:N,j=1:i))
     for i = 1:N
-        @constraint(m, sum(tour_matrix[i,:]) == 1) # permutation matrix constraint
-        @constraint(m, sum(tour_matrix[:,i]) == 1) # permutation matrix constraint
+        @constraint(m, sum(tour_matrix[i,:]) == 2) # degree of each city is 2
+
         @constraint(m, tour_matrix[i,i] == 0) # rule out cycles of length 1
-        for j = 1:N
-            @constraint(m, tour_matrix[i,j]+tour_matrix[j,i] <= 1) # rule out cycles of length 2
-        end
     end
     @info "Starting optimization." plot_cities(cities)
     iter = 0
@@ -125,6 +152,8 @@ function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance)
     tot_cycles = 0
     while num_cycles > 1
         t = @elapsed optimize!(m)
+        status = termination_status(m)
+        status == MOI.OPTIMAL || throw(ErrorException("Error: problem status $status"))
         iter += 1
         num_cycles = remove_cycles!(m, tour_matrix)
         tot_cycles += num_cycles
