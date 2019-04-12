@@ -8,7 +8,7 @@ This is a simple Julia package to solve the travelling saleman problem in the sy
 See also [TravelingSalesmanHeuristics.jl](https://github.com/evanfields/TravelingSalesmanHeuristics.jl) for a Julia implementation of heuristic solutions to the TSP (which will be much more performant, especially for large problems, although not exact).
 
 >Generating subtour elimination constraints for the TSP from pure integer solutions  
->Pferschy, U. & Staněk, R. Cent Eur J Oper Res (2017) 25: 231. 
+>Pferschy, U. & Staněk, R. Cent Eur J Oper Res (2017) 25: 231.  
 ><https://doi.org/10.1007/s10100-016-0437-8>
 
 
