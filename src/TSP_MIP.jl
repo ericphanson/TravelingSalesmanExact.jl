@@ -79,18 +79,18 @@ function plot_tour(cities, perm_matrix)
 end
 
 """
-    remove_cycles!(m, tour_matrix,
+    remove_cycles!(model, tour_matrix,
 
 Find the (non-maximal-length) cycles in the current solution `tour_matrix`
 and add constraints to the JuMP model to disallow them. Returns the
 number of cycles found.
 """
-function remove_cycles!(m, tour_matrix)
+function remove_cycles!(model, tour_matrix)
     tour_matrix_val = value.(tour_matrix)
     cycles = get_cycles(tour_matrix_val)
     length(cycles) == 1 && return 1
     for cycle in cycles
-        @constraint(m, sum(tour_matrix[cycle, cycle]) <= 2*length(cycle)-2)
+        @constraint(model, sum(tour_matrix[cycle, cycle]) <= 2*length(cycle)-2)
     end
     return length(cycles)
 end
@@ -134,40 +134,40 @@ and an optimizer for JuMP.
 function get_optimal_tour(cities::AbstractVector; distance = euclidean_distance, optimizer = GLPK.Optimizer)
     N = length(cities)
 
-    m = Model(with_optimizer(optimizer))
+    model = Model(with_optimizer(optimizer))
 
     # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
-    @variable(m, tour_matrix[1:N,1:N], Symmetric, binary=true)
+    @variable(model, tour_matrix[1:N,1:N], Symmetric, binary=true)
     
     # cost of the tour
-    @objective(m, Min, sum(tour_matrix[i,j]*distance(cities[i], cities[j]) for i=1:N,j=1:i))
+    @objective(model, Min, sum(tour_matrix[i,j]*distance(cities[i], cities[j]) for i=1:N,j=1:i))
     for i = 1:N
-        @constraint(m, sum(tour_matrix[i,:]) == 2) # degree of each city is 2
+        @constraint(model, sum(tour_matrix[i,:]) == 2) # degree of each city is 2
 
-        @constraint(m, tour_matrix[i,i] == 0) # rule out cycles of length 1
+        @constraint(model, tour_matrix[i,i] == 0) # rule out cycles of length 1
     end
     @info "Starting optimization." plot_cities(cities)
     iter = 0
     num_cycles = 2 # just something > 1
     tot_cycles = 0
     while num_cycles > 1
-        t = @elapsed optimize!(m)
-        status = termination_status(m)
+        t = @elapsed optimize!(model)
+        status = termination_status(model)
         status == MOI.OPTIMAL || throw(ErrorException("Error: problem status $status"))
         iter += 1
-        num_cycles = remove_cycles!(m, tour_matrix)
+        num_cycles = remove_cycles!(model, tour_matrix)
         tot_cycles += num_cycles
         @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles." plot_tour(cities, value.(tour_matrix))
     end
     tot_cycles -= 1 # remove the true cycle
 
-    status = termination_status(m)
+    status = termination_status(model)
     status == MOI.OPTIMAL || @warn(status)
 
     @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
-    @info "Final path has length $(objective_value(m))." 
-    @info "Final problem has $(length(m.variable_to_zero_one)) binary variables, $(num_constraints(m, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(m, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
-    return (tour = find_cycle(value.(tour_matrix)), cost = objective_value(m))
+    @info "Final path has length $(objective_value(model))." 
+    @info "Final problem has $(length(model.variable_to_zero_one)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
+    return (tour = find_cycle(value.(tour_matrix)), cost = objective_value(model))
 end
 
 
