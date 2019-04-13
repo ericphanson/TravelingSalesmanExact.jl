@@ -132,7 +132,7 @@ formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric
 and an optimizer for JuMP.
 """
-function get_optimal_tour(cities::AbstractVector; verbose = true, distance = euclidean_distance, optimizer = GLPK.Optimizer, symmetric = true)
+function get_optimal_tour(cities::AbstractVector; verbose = false, distance = euclidean_distance, optimizer = GLPK.Optimizer, symmetric = true)
     N = length(cities)
     cost = [ distance(cities[i], cities[j]) for i=1:N, j=1:N ]
     return _get_optimal_tour(cost, symmetric, optimizer, verbose, cities)
@@ -146,7 +146,7 @@ JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify an optimizer for JuMP.
 """
-function get_optimal_tour(cost::AbstractMatrix; verbose = true, optimizer = GLPK.Optimizer, symmetric = issymmetric(cost))
+function get_optimal_tour(cost::AbstractMatrix; verbose = false, optimizer = GLPK.Optimizer, symmetric = issymmetric(cost))
     size(cost, 1) == size(cost,2) || throw(ArgumentError("First argument must be a square matrix"))
     return _get_optimal_tour(cost, symmetric, optimizer, verbose)
 end
