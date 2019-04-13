@@ -79,7 +79,7 @@ function plot_tour(cities, perm_matrix)
 end
 
 """
-    remove_cycles!(model, tour_matrix,
+    remove_cycles!(model, tour_matrix)
 
 Find the (non-maximal-length) cycles in the current solution `tour_matrix`
 and add constraints to the JuMP model to disallow them. Returns the
