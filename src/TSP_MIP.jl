@@ -1,6 +1,6 @@
 module TSP_MIP
 
-using JuMP, GLPK, UnicodePlots, Logging
+using JuMP, GLPK, UnicodePlots, Logging, LinearAlgebra
 import MathOptInterface
 const MOI = MathOptInterface
 export get_optimal_tour, plot_cities, simple_parse_tsp
@@ -24,28 +24,28 @@ end
 Returns the cycle in the permutation described by `perm_matrix` which includes `starting_ind`.
 """
 function find_cycle(perm_matrix, starting_ind = 1)
-    cycle = [starting_ind]
-    prev_ind = ind = starting_ind
-    while true
-        next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, 1:prev_ind-1]))
-        if isnothing(next_ind)
-            next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
+        cycle = [starting_ind]
+        while true
+            new_inds = findall(≈(1.0), @views(perm_matrix[cycle[end], :]))
+            diff = setdiff(new_inds, cycle)
+            isempty(diff) && break
+            append!(cycle, diff)
         end
-        next_ind == starting_ind && break
-        push!(cycle, next_ind)
-        prev_ind, ind = ind, next_ind
+        cycle
     end
-    cycle
-end
 
-# Simpler implementation with slightly more allocations:
+# More optimized version:
 # function find_cycle(perm_matrix, starting_ind = 1)
 #     cycle = [starting_ind]
+#     prev_ind = ind = starting_ind
 #     while true
-#         new_inds = findall(≈(1.0), @views(perm_matrix[cycle[end], :]))
-#         diff = setdiff(new_inds, cycle)
-#         isempty(diff) && break
-#         append!(cycle, diff)
+#         next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, 1:prev_ind-1]))
+#         if isnothing(next_ind)
+#             next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
+#         end
+#         next_ind == starting_ind && break
+#         push!(cycle, next_ind)
+#         prev_ind, ind = ind, next_ind
 #     end
 #     cycle
 # end
@@ -85,12 +85,13 @@ Find the (non-maximal-length) cycles in the current solution `tour_matrix`
 and add constraints to the JuMP model to disallow them. Returns the
 number of cycles found.
 """
-function remove_cycles!(model, tour_matrix)
+function remove_cycles!(model, tour_matrix; symmetric)
     tour_matrix_val = value.(tour_matrix)
     cycles = get_cycles(tour_matrix_val)
     length(cycles) == 1 && return 1
     for cycle in cycles
-        @constraint(model, sum(tour_matrix[cycle, cycle]) <= 2*length(cycle)-2)
+        constr = symmetric ? 2*length(cycle)-2 : length(cycle)-1
+        @constraint(model, sum(tour_matrix[cycle, cycle]) <= constr)
     end
     return length(cycles)
 end
@@ -128,57 +129,92 @@ end
 Solves the travelling salesman problem for a list of cities using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
-cycles. Returns an optimal tour. Optionally specify a distance metric
+cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric
 and an optimizer for JuMP.
 """
-function get_optimal_tour(cities::AbstractVector; verbose = true, distance = euclidean_distance, optimizer = GLPK.Optimizer)
-    if verbose
-        results = _get_optimal_tour_verbose(cities, distance, optimizer)
-    else
-        results = with_logger(NullLogger()) do
-            _get_optimal_tour_verbose(cities, distance, optimizer)
-        end
-    end
-    return results
+function get_optimal_tour(cities::AbstractVector; verbose = true, distance = euclidean_distance, optimizer = GLPK.Optimizer, symmetric = true)
+    N = length(cities)
+    cost = [ distance(cities[i], cities[j]) for i=1:N, j=1:N ]
+    return _get_optimal_tour(cost, symmetric, optimizer, verbose, cities)
 end
 
-function _get_optimal_tour_verbose(cities, distance, optimizer)
-    N = length(cities)
+"""
+    get_optimal_tour(cost::AbstractMatrix; verbose = true, optimizer = GLPK.Optimizer)
+
+Solves the travelling salesman problem for a square cost matrix using
+JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
+formulation and adaptively adding constraints to disallow non-maximal
+cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify an optimizer for JuMP.
+"""
+function get_optimal_tour(cost::AbstractMatrix; verbose = true, optimizer = GLPK.Optimizer, symmetric = issymmetric(cost))
+    size(cost, 1) == size(cost,2) || throw(ArgumentError("First argument must be a square matrix"))
+    return _get_optimal_tour(cost, symmetric, optimizer, verbose)
+end
+
+function _get_optimal_tour(cost::AbstractMatrix, symmetric, optimizer, verbose, cities = nothing)
+    N = size(cost,1)
+    has_cities = !isnothing(cities)
 
     model = Model(with_optimizer(optimizer))
+    if symmetric
+         # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
+        @variable(model, tour_matrix[1:N,1:N], Symmetric, binary=true)
 
-    # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
-    @variable(model, tour_matrix[1:N,1:N], Symmetric, binary=true)
-    
-    # cost of the tour
-    @objective(model, Min, sum(tour_matrix[i,j]*distance(cities[i], cities[j]) for i=1:N,j=1:i))
-    for i = 1:N
-        @constraint(model, sum(tour_matrix[i,:]) == 2) # degree of each city is 2
-
-        @constraint(model, tour_matrix[i,i] == 0) # rule out cycles of length 1
+        # cost of the tour
+        @objective(model, Min, sum(tour_matrix[i,j]*cost[i,j] for i=1:N,j=1:i))
+        for i = 1:N
+            @constraint(model, sum(tour_matrix[i,:]) == 2) # degree of each city is 2
+            @constraint(model, tour_matrix[i,i] == 0) # rule out cycles of length 1
+        end
+    else
+        # `tour_matrix` will be a permutation matrix
+        @variable(model, tour_matrix[1:N,1:N], binary=true)
+        @objective(model, Min, sum(tour_matrix[i,j]*cost[i,j] for i=1:N,j=1:N))
+        for i = 1:N
+            @constraint(model, sum(tour_matrix[i,:]) == 1) # row-sum is 1
+            @constraint(model, sum(tour_matrix[:,i]) == 1) # col-sum is 1
+            @constraint(model, tour_matrix[i,i] == 0) # rule out cycles of length 1
+            for j = 1:N
+                @constraint(model, tour_matrix[i,j]+tour_matrix[j,i] <= 1) # rule out cycles of length 2
+            end
+         end
     end
-    @info "Starting optimization." plot_cities(cities)
-    iter = 0
+
+   
+   if has_cities && verbose
+        @info "Starting optimization." plot_cities(cities)
+   elseif verbose
+        @info "Starting optimization."
+   end
+
+
+    iter = 0 # count for logging
+    tot_cycles = 0 # count for logging
     num_cycles = 2 # just something > 1
-    tot_cycles = 0
     while num_cycles > 1
         t = @elapsed optimize!(model)
         status = termination_status(model)
         status == MOI.OPTIMAL || throw(ErrorException("Error: problem status $status"))
-        iter += 1
-        num_cycles = remove_cycles!(model, tour_matrix)
+        num_cycles = remove_cycles!(model, tour_matrix; symmetric = symmetric)
         tot_cycles += num_cycles
-        @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles." plot_tour(cities, value.(tour_matrix))
+        iter += 1
+        if has_cities && verbose
+            @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles." plot_tour(cities, value.(tour_matrix))
+        elseif verbose
+            @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles."
+        end
     end
     tot_cycles -= 1 # remove the true cycle
 
     status = termination_status(model)
     status == MOI.OPTIMAL || @warn(status)
 
-    @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
-    @info "Final path has length $(objective_value(model))." 
-    @info "Final problem has $(length(model.variable_to_zero_one)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
-    return (tour = find_cycle(value.(tour_matrix)), cost = objective_value(model))
+    if verbose
+        @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
+        @info "Final path has length $(objective_value(model))." 
+        @info "Final problem has $(length(model.variable_to_zero_one)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
+    end
+    return (find_cycle(value.(tour_matrix)), objective_value(model))
 end
 
 """
