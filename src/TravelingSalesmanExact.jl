@@ -236,7 +236,7 @@ function simple_parse_tsp(filename; verbose = true)
             x = parse(Int, nums[2])
             y = parse(Int, nums[3])
             push!(cities, [x, y])
-        else
+        elseif verbose
             println(line)
         end
     end
