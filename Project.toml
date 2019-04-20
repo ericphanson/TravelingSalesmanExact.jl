@@ -1,4 +1,4 @@
-name = "TSP_MIP"
+name = "TravelingSalesmanExact"
 uuid = "737fac7d-4440-55ef-927e-002196e95561"
 authors = ["Eric <5846501+ericphanson@users.noreply.github.com>"]
 version = "0.2.0"
