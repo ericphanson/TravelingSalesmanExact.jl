@@ -1,7 +1,7 @@
-# TSP_MIP
+# TravelingSalesmanExact
 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TSP_MIP.jl/dev)
-[![Build Status](https://travis-ci.com/ericphanson/TSP_MIP.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TSP_MIP.jl)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/dev)
+[![Build Status](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl)
 
 This is a simple Julia package to solve the travelling saleman problem using an Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from the very nice blog post <http://opensourc.es/blog/mip-tsp> which also has a [Julia implementation](https://github.com/opensourcesblog/mip_tsp). In the symmetric case, the implementation in this package uses the symmetry of the problem to reduce the number of variables, and essentially is the most basic version of the algorithms described by (Pferschy and Staněk, 2017) (i.e. no warmstarts or clustering methods for subtour elimination as a presolve step).
 
@@ -23,13 +23,13 @@ Requires Julia (<https://julialang.org/downloads/>).
 
 To install the package, add the package from GitHub:
 ```julia
-] add https://github.com/ericphanson/TSP_MIP.jl
+] add https://github.com/ericphanson/TravelingSalesmanExact.jl
 ```
 
 ### Example
 
 ```julia
-using TSP_MIP
+using TravelingSalesmanExact
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities; verbose = true)

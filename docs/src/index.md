@@ -1,8 +1,8 @@
-# TSP_MIP.jl
+# TravelingSalesmanExact.jl
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [TSP_MIP]
+Modules = [TravelingSalesmanExact]
 ```

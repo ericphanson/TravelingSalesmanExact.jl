@@ -1,17 +1,17 @@
-using Documenter, TSP_MIP
+using Documenter, TravelingSalesmanExact
 
 makedocs(;
-    modules=[TSP_MIP],
+    modules=[TravelingSalesmanExact],
     format=Documenter.HTML(),
     pages=[
         "Home" => "index.md",
     ],
-    repo="https://github.com/ericphanson/TSP_MIP.jl/blob/{commit}{path}#L{line}",
-    sitename="TSP_MIP.jl",
+    repo="https://github.com/ericphanson/TravelingSalesmanExact.jl/blob/{commit}{path}#L{line}",
+    sitename="TravelingSalesmanExact.jl",
     authors="Eric",
     assets=nothing,
 )
 
 deploydocs(;
-    repo="github.com/ericphanson/TSP_MIP.jl",
+    repo="github.com/ericphanson/TravelingSalesmanExact.jl",
 )

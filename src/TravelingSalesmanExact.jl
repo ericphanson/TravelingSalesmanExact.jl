@@ -1,4 +1,4 @@
-module TSP_MIP
+module TravelingSalesmanExact
 
 using JuMP, GLPK, UnicodePlots, Logging, LinearAlgebra
 import MathOptInterface

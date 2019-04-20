@@ -1,4 +1,4 @@
-using TSP_MIP
+using TravelingSalesmanExact
 using Test
 
 function test_tour(tour, L)
@@ -9,11 +9,11 @@ end
 
 @testset "att48.tsp" begin
     cities = simple_parse_tsp(joinpath(@__DIR__, "att48.tsp"))
-    sym_tour, sym_cost = get_optimal_tour(cities; distance = TSP_MIP.ATT)
+    sym_tour, sym_cost = get_optimal_tour(cities; distance = TravelingSalesmanExact.ATT)
     @test sym_cost ≈ 10628
     test_tour(sym_tour, 48)
 
-    asym_tour, asym_cost = get_optimal_tour(cities; distance = TSP_MIP.ATT, symmetric = false)
+    asym_tour, asym_cost = get_optimal_tour(cities; distance = TravelingSalesmanExact.ATT, symmetric = false)
     @test asym_cost ≈ 10628 
     test_tour(asym_tour, 48)
 end
@@ -38,7 +38,7 @@ end
     cities = Array{Float64,1}[[48.8885, 41.0517], [35.6635, 12.1844], [95.6122, 15.9847], [67.5772, 9.54407], [16.6325, 51.9001]]
     t7, c7 = get_optimal_tour(cities; verbose = false)
     t8, c8 = @inferred get_optimal_tour(cities; verbose = false, symmetric = false)
-    cost = [ TSP_MIP.euclidean_distance(c1, c2) for c1 in cities, c2 in cities ]
+    cost = [ TravelingSalesmanExact.euclidean_distance(c1, c2) for c1 in cities, c2 in cities ]
     t9, c9 = get_optimal_tour(cost; verbose = false, symmetric = false)
     t10, c10 = get_optimal_tour(cost; verbose = false, symmetric = true)
     @test c7 ≈ c8
