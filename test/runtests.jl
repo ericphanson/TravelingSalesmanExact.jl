@@ -9,7 +9,7 @@ end
 
 @testset "att48.tsp" begin
     cities = simple_parse_tsp(joinpath(@__DIR__, "att48.tsp"))
-    sym_tour, sym_cost = get_optimal_tour(cities; distance = TravelingSalesmanExact.ATT)
+    sym_tour, sym_cost = get_optimal_tour(cities; distance = TravelingSalesmanExact.ATT, verbose = true)
     @test sym_cost ≈ 10628
     test_tour(sym_tour, 48)
 
