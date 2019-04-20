@@ -2,6 +2,7 @@
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/dev)
 [![Build Status](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl)
+[![codecov](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl)
 
 This is a simple Julia package to solve the travelling saleman problem using an Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from the very nice blog post <http://opensourc.es/blog/mip-tsp> which also has a [Julia implementation](https://github.com/opensourcesblog/mip_tsp). In the symmetric case, the implementation in this package uses the symmetry of the problem to reduce the number of variables, and essentially is the most basic version of the algorithms described by (Pferschy and Staněk, 2017) (i.e. no warmstarts or clustering methods for subtour elimination as a presolve step).
 
