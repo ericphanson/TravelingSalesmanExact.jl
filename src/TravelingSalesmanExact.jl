@@ -1,9 +1,9 @@
 module TravelingSalesmanExact
 
-using JuMP, GLPK, UnicodePlots, Logging, LinearAlgebra
+using JuMP, UnicodePlots, Logging, LinearAlgebra
 import MathOptInterface
 const MOI = MathOptInterface
-export get_optimal_tour, plot_cities, simple_parse_tsp
+export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer
 
 ≈(x) = Base.Fix2(isapprox, x)
 
@@ -124,38 +124,43 @@ end
 
 
 """
-    get_optimal_tour(cities::AbstractVector; verbose = true, distance = euclidean_distance, optimizer = GLPK.Optimizer)
+    get_optimal_tour(cities::AbstractVector, with_optimizer; verbose = false, distance = euclidean_distance, symmetric = true)
 
 Solves the travelling salesman problem for a list of cities using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
-cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric
-and an optimizer for JuMP.
+cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric. 
+
+The second argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+    get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cities::AbstractVector; verbose = false, distance = euclidean_distance, optimizer = GLPK.Optimizer, symmetric = true)
+function get_optimal_tour(cities::AbstractVector, with_optimizer; verbose = false, distance = euclidean_distance, symmetric = true)
     N = length(cities)
     cost = [ distance(cities[i], cities[j]) for i=1:N, j=1:N ]
-    return _get_optimal_tour(cost, symmetric, optimizer, verbose, cities)
+    return _get_optimal_tour(cost, with_optimizer, symmetric, verbose, cities)
 end
 
 """
-    get_optimal_tour(cost::AbstractMatrix; verbose = true, optimizer = GLPK.Optimizer)
+    get_optimal_tour(cost::AbstractMatrix, with_optimizer; verbose = false, symmetric = issymmetric(cost))
 
 Solves the travelling salesman problem for a square cost matrix using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
-cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify an optimizer for JuMP.
+cycles. Returns an optimal tour and the cost of the optimal path.
+
+The second argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+    get_optimal_tour(cost, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cost::AbstractMatrix; verbose = false, optimizer = GLPK.Optimizer, symmetric = issymmetric(cost))
+function get_optimal_tour(cost::AbstractMatrix, with_optimizer; verbose = false, symmetric = issymmetric(cost))
     size(cost, 1) == size(cost,2) || throw(ArgumentError("First argument must be a square matrix"))
-    return _get_optimal_tour(cost, symmetric, optimizer, verbose)
+    return _get_optimal_tour(cost, with_optimizer, symmetric, verbose)
 end
 
-function _get_optimal_tour(cost::AbstractMatrix, symmetric, optimizer, verbose, cities = nothing)
+function _get_optimal_tour(cost::AbstractMatrix, with_optimizer, symmetric, verbose, cities = nothing)
     N = size(cost,1)
     has_cities = !isnothing(cities)
 
-    model = Model(with_optimizer(optimizer))
+    model = Model(with_optimizer)
     if symmetric
          # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
         @variable(model, tour_matrix[1:N,1:N], Symmetric, binary=true)
