@@ -29,7 +29,7 @@ You also need a [mixed-integer solver compatible with JuMP 19+](http://www.julia
 ```julia
 ] add GLPK
 ```
-`Mosek` is a commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTool` (<https://github.com/JuliaOpt/MosekTools.jl>)
+`Mosek` is a commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>)
 that can be installed via
 ```julia
 ] add MosekTools
