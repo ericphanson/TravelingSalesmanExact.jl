@@ -120,6 +120,7 @@ formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric. 
 
 The second argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
 function get_optimal_tour(cities::AbstractVector, with_optimizer; verbose = false, distance = euclidean_distance, symmetric = true)
@@ -137,6 +138,7 @@ formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour and the cost of the optimal path.
 
 The second argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+
     get_optimal_tour(cost, with_optimizer(GLPK.Optimizer))
 """
 function get_optimal_tour(cost::AbstractMatrix, with_optimizer; verbose = false, symmetric = issymmetric(cost))
