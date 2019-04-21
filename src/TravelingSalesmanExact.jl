@@ -209,7 +209,7 @@ function _get_optimal_tour(cost::AbstractMatrix, with_optimizer, symmetric, verb
         @info "Final path has length $(objective_value(model))." 
         @info "Final problem has $(length(model.variable_to_zero_one)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
     end
-    return (find_cycle(value.(tour_matrix)), objective_value(model), model)
+    return find_cycle(value.(tour_matrix)), objective_value(model)
 end
 
 """
