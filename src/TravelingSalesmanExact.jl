@@ -24,31 +24,19 @@ end
 Returns the cycle in the permutation described by `perm_matrix` which includes `starting_ind`.
 """
 function find_cycle(perm_matrix, starting_ind = 1)
-        cycle = [starting_ind]
-        while true
-            new_inds = findall(≈(1.0), @views(perm_matrix[cycle[end], :]))
-            diff = setdiff(new_inds, cycle)
-            isempty(diff) && break
-            append!(cycle, diff)
+    cycle = [starting_ind]
+    prev_ind = ind = starting_ind
+    while true
+        next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, 1:prev_ind-1]))
+        if isnothing(next_ind)
+            next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
         end
-        cycle
+        next_ind == starting_ind && break
+        push!(cycle, next_ind)
+        prev_ind, ind = ind, next_ind
     end
-
-# More optimized version:
-# function find_cycle(perm_matrix, starting_ind = 1)
-#     cycle = [starting_ind]
-#     prev_ind = ind = starting_ind
-#     while true
-#         next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, 1:prev_ind-1]))
-#         if isnothing(next_ind)
-#             next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
-#         end
-#         next_ind == starting_ind && break
-#         push!(cycle, next_ind)
-#         prev_ind, ind = ind, next_ind
-#     end
-#     cycle
-# end
+    cycle
+end
 
 """
     get_cycles(perm_matrix)
@@ -219,7 +207,7 @@ function _get_optimal_tour(cost::AbstractMatrix, with_optimizer, symmetric, verb
         @info "Final path has length $(objective_value(model))." 
         @info "Final problem has $(length(model.variable_to_zero_one)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
     end
-    return (find_cycle(value.(tour_matrix)), objective_value(model))
+    return (find_cycle(value.(tour_matrix)), objective_value(model), model)
 end
 
 """
