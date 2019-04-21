@@ -3,7 +3,7 @@ module TravelingSalesmanExact
 using JuMP, UnicodePlots, Logging, LinearAlgebra
 import MathOptInterface
 const MOI = MathOptInterface
-export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer, set_default_optimizer
+export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer, set_default_optimizer!
 
 ≈(x) = Base.Fix2(isapprox, x)
 
@@ -18,7 +18,7 @@ Sets the default optimizer. For example,
     set_default_optimizer(with_optimizer(GLPK.Optimizer))
 """
 
-set_default_optimizer(O::OptimizerFactory) = default_optimizer[] = O
+set_default_optimizer!(O::OptimizerFactory) = default_optimizer[] = O
 
 """
     get_default_optimizer()
@@ -26,6 +26,9 @@ set_default_optimizer(O::OptimizerFactory) = default_optimizer[] = O
 Gets the default optimizer, which is set by `set_default_optimizer`.
 """
 get_default_optimizer() =  default_optimizer[]
+
+
+reset_default_optimizer!() =  default_optimizer[] = nothing
 
 """
     plot_cities(cities)

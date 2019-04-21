@@ -50,7 +50,7 @@ With GLPK:
 
 ```julia
 using TravelingSalesmanExact, GLPK
-set_default_optimizer(with_optimizer(GLPK.Optimizer))
+set_default_optimizer!(with_optimizer(GLPK.Optimizer))
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities; verbose = true)
@@ -61,7 +61,7 @@ With Mosek:
 
 ```julia
 using TravelingSalesmanExact, MosekTools
-set_default_optimizer(with_optimizer(Mosek.Optimizer, QUIET = true))
+set_default_optimizer!(with_optimizer(Mosek.Optimizer, QUIET = true))
 
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
