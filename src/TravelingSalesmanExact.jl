@@ -17,7 +17,6 @@ Sets the default optimizer. For example,
     using GLPK
     set_default_optimizer(with_optimizer(GLPK.Optimizer))
 """
-
 set_default_optimizer!(O::OptimizerFactory) = default_optimizer[] = O
 
 """
