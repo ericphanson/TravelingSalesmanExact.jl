@@ -3,9 +3,29 @@ module TravelingSalesmanExact
 using JuMP, UnicodePlots, Logging, LinearAlgebra
 import MathOptInterface
 const MOI = MathOptInterface
-export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer
+export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer, set_default_optimizer
 
 ≈(x) = Base.Fix2(isapprox, x)
+
+const default_optimizer = Ref{Union{OptimizerFactory, Nothing}}(nothing)
+
+"""
+    set_default_optimizer(O::OptimizerFactory)
+
+Sets the default optimizer. For example,
+
+    using GLPK
+    set_default_optimizer(with_optimizer(GLPK.Optimizer))
+"""
+
+set_default_optimizer(O::OptimizerFactory) = default_optimizer[] = O
+
+"""
+    get_default_optimizer()
+
+Gets the default optimizer, which is set by `set_default_optimizer`.
+"""
+get_default_optimizer() =  default_optimizer[]
 
 """
     plot_cities(cities)
@@ -112,37 +132,39 @@ end
 
 
 """
-    get_optimal_tour(cities::AbstractVector, with_optimizer; verbose = false, distance = euclidean_distance, symmetric = true)
+    get_optimal_tour(cities::AbstractVector, with_optimizer = get_default_optimizer(); verbose = false, distance = euclidean_distance, symmetric = true)
 
 Solves the travelling salesman problem for a list of cities using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric. 
 
-The second argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+The second argument is mandatory if a default optimizer has not been set (via `set_default_optimizer`). This argument should be the result of a call to `JuMP.with_optimizer`, e.g.
 
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cities::AbstractVector, with_optimizer; verbose = false, distance = euclidean_distance, symmetric = true)
+function get_optimal_tour(cities::AbstractVector, with_optimizer = get_default_optimizer(); verbose = false, distance = euclidean_distance, symmetric = true)
+    with_optimizer === nothing && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [ distance(cities[i], cities[j]) for i=1:N, j=1:N ]
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose, cities)
 end
 
 """
-    get_optimal_tour(cost::AbstractMatrix, with_optimizer; verbose = false, symmetric = issymmetric(cost))
+    get_optimal_tour(cost::AbstractMatrix, with_optimizer = get_default_optimizer(); verbose = false, symmetric = issymmetric(cost))
 
 Solves the travelling salesman problem for a square cost matrix using
 JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
 formulation and adaptively adding constraints to disallow non-maximal
 cycles. Returns an optimal tour and the cost of the optimal path.
 
-The second argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+The second argument is mandatory if a default optimizer has not been set (via `set_default_optimizer`). This argument should be the result of a call to `JuMP.with_optimizer`, e.g.
 
-    get_optimal_tour(cost, with_optimizer(GLPK.Optimizer))
+    get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cost::AbstractMatrix, with_optimizer; verbose = false, symmetric = issymmetric(cost))
+function get_optimal_tour(cost::AbstractMatrix, with_optimizer =  get_default_optimizer(); verbose = false, symmetric = issymmetric(cost))
     size(cost, 1) == size(cost,2) || throw(ArgumentError("First argument must be a square matrix"))
+    with_optimizer === nothing && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose)
 end
 
