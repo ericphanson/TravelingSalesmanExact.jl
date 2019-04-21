@@ -17,7 +17,7 @@ See also [TravelingSalesmanHeuristics.jl](https://github.com/evanfields/Travelin
 >G. Dantzig, R. Fulkerson, and S. Johnson, 	J. Oper. Res. Soc. (1954) 2:4, 393-410  
 ><https://doi.org/10.1287/opre.2.4.393>
 
-See [TravelingSalesmanBenchmarks](https://github.com/ericphanson/TravelingSalesmanBenchmarks.jl) for one possible use of this package: generating exact cost values for test-cases to help tune the heuristics of `TravelingSalesmanHeuristics`.
+See [TravelingSalesmanBenchmarks](https://github.com/ericphanson/TravelingSalesmanBenchmarks.jl) for one use of this package: generating exact cost values for test-cases to help tune the heuristics of `TravelingSalesmanHeuristics`.
 
 ## Usage
 
