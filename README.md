@@ -7,6 +7,7 @@
 This is a simple Julia package to solve the travelling saleman problem using an Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from the very nice blog post <http://opensourc.es/blog/mip-tsp> which also has a [Julia implementation](https://github.com/opensourcesblog/mip_tsp). In the symmetric case, the implementation in this package uses the symmetry of the problem to reduce the number of variables, and essentially is the most basic version of the algorithms described by (Pferschy and Staněk, 2017) (i.e. no warmstarts or clustering methods for subtour elimination as a presolve step).
 
 See also [TravelingSalesmanHeuristics.jl](https://github.com/evanfields/TravelingSalesmanHeuristics.jl) for a Julia implementation of heuristic solutions to the TSP (which will be much more performant, especially for large problems, although not exact).
+Additionally, see [TravelingSalesmanBenchmarks](https://github.com/ericphanson/TravelingSalesmanBenchmarks.jl) for one use of this package: generating exact cost values for test-cases to help tune the heuristics of the aforementioned `TravelingSalesmanHeuristics.jl`.
 
 >Generating subtour elimination constraints for the TSP from pure integer solutions  
 >Pferschy, U. & Staněk, R. Cent Eur J Oper Res (2017) 25: 231.  
@@ -17,16 +18,15 @@ See also [TravelingSalesmanHeuristics.jl](https://github.com/evanfields/Travelin
 >G. Dantzig, R. Fulkerson, and S. Johnson, 	J. Oper. Res. Soc. (1954) 2:4, 393-410  
 ><https://doi.org/10.1287/opre.2.4.393>
 
-See [TravelingSalesmanBenchmarks](https://github.com/ericphanson/TravelingSalesmanBenchmarks.jl) for one use of this package: generating exact cost values for test-cases to help tune the heuristics of `TravelingSalesmanHeuristics`.
 
 ## Usage
 
 Requires Julia (<https://julialang.org/downloads/>).
 
-To install the package, add the package from GitHub:
+This package is registered, so you can add it via
 
 ```julia
-] add https://github.com/ericphanson/TravelingSalesmanExact.jl
+] add TravelingSalesmanExact
 ```
 
 You also need a [mixed-integer solver compatible with JuMP 19+](http://www.juliaopt.org/JuMP.jl/v0.19.0/installation/#Getting-Solvers-1) to do the underlying optimization. For example, `GLPK` is a free, open-source solver (see <https://github.com/JuliaOpt/GLPK.jl> for the compatible Julia wrapper) and can be installed by
