@@ -4,6 +4,8 @@
 [![Build Status](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl)
 [![codecov](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl)
 
+![Example](example.svg)
+
 This is a simple Julia package to solve the travelling saleman problem using an Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from the very nice blog post <http://opensourc.es/blog/mip-tsp> which also has a [Julia implementation](https://github.com/opensourcesblog/mip_tsp). In the symmetric case, the implementation in this package uses the symmetry of the problem to reduce the number of variables, and essentially is the most basic version of the algorithms described by (Pferschy and Staněk, 2017) (i.e. no warmstarts or clustering methods for subtour elimination as a presolve step).
 
 See also [TravelingSalesmanHeuristics.jl](https://github.com/evanfields/TravelingSalesmanHeuristics.jl) for a Julia implementation of heuristic solutions to the TSP (which will be much more performant, especially for large problems, although not exact).
@@ -35,14 +37,14 @@ You also need a [mixed-integer solver compatible with JuMP 19+](http://www.julia
 ] add GLPK
 ```
 
-`Mosek` is a commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>)
+`Gurobi` is a commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `Gurobi` (<https://github.com/JuliaOpt/Gurobi.jl>)
 that can be installed via
 
 ```julia
-] add MosekTools
+] add Gurobi
 ```
 
-Note you also need a license properly configured; the older wrapper [Mosek.jl](https://github.com/JuliaOpt/Mosek.jl#installation) offers instructions for this.
+Note you also need Gurobi itself installed and a license properly configured.
 
 ### Examples
 
@@ -57,11 +59,12 @@ tour, cost = get_optimal_tour(cities; verbose = true)
 plot_cities(cities[tour])
 ```
 
-With Mosek:
+With Gurobi:
 
 ```julia
-using TravelingSalesmanExact, MosekTools
-set_default_optimizer!(with_optimizer(Mosek.Optimizer, QUIET = true))
+using TravelingSalesmanExact, Gurobi
+const GurobiEnv = Gurobi.Env()
+set_default_optimizer!(with_optimizer(Gurobi.Optimizer, GurobiEnv, OutputFlag = 0))
 
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
@@ -69,7 +72,7 @@ tour, cost = get_optimal_tour(cities; verbose = true)
 plot_cities(cities[tour])
 ```
 
-Note that without the `QUIET = true` keyword argument to the `with_optimizer` call, Mosek will print a lot of information about each iteration of the solve. One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
+Note that without the `OutputFlag = 0` keyword argument to the `with_optimizer` call, Gurobi will print a lot of information about each iteration of the solve. One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
 
 ```julia
 using TravelingSalesmanExact, GLPK
@@ -79,4 +82,9 @@ tour, cost = get_optimal_tour(cities, with_optimizer(GLPK.Optimizer); verbose = 
 plot_cities(cities[tour])
 ```
 
-![Example](example.svg)
+`Mosek` is another commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>). You also need a license properly configured; the older wrapper [Mosek.jl](https://github.com/JuliaOpt/Mosek.jl#installation) offers instructions for this. Usage:
+
+```julia
+using TravelingSalesmanExact, MosekTools
+set_default_optimizer!(with_optimizer(Mosek.Optimizer, QUIET = true))
+```
