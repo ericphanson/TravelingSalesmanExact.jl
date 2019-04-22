@@ -59,20 +59,24 @@ tour, cost = get_optimal_tour(cities; verbose = true)
 plot_cities(cities[tour])
 ```
 
-With Gurobi:
+To use Gurobi, the first few lines can be changed to:
 
 ```julia
 using TravelingSalesmanExact, Gurobi
 const GurobiEnv = Gurobi.Env()
 set_default_optimizer!(with_optimizer(Gurobi.Optimizer, GurobiEnv, OutputFlag = 0))
-
-n = 50
-cities = [ 100*rand(2) for _ in 1:n];
-tour, cost = get_optimal_tour(cities; verbose = true)
-plot_cities(cities[tour])
 ```
 
-Note that without the `OutputFlag = 0` keyword argument to the `with_optimizer` call, Gurobi will print a lot of information about each iteration of the solve. One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
+Note that without the `OutputFlag = 0` keyword argument to the `with_optimizer` call, Gurobi will print a lot of information about each iteration of the solve. 
+
+`Mosek` is another commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>). You also need a license properly configured; the older wrapper [Mosek.jl](https://github.com/JuliaOpt/Mosek.jl#installation) offers instructions for this. `Mosek` can be used as e.g.
+
+```julia
+using TravelingSalesmanExact, MosekTools
+set_default_optimizer!(with_optimizer(Mosek.Optimizer, QUIET = true))
+```
+
+One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
 
 ```julia
 using TravelingSalesmanExact, GLPK
@@ -80,11 +84,4 @@ n = 50
 cities = [ 100*rand(2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities, with_optimizer(GLPK.Optimizer); verbose = true)
 plot_cities(cities[tour])
-```
-
-`Mosek` is another commerical wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>). You also need a license properly configured; the older wrapper [Mosek.jl](https://github.com/JuliaOpt/Mosek.jl#installation) offers instructions for this. Usage:
-
-```julia
-using TravelingSalesmanExact, MosekTools
-set_default_optimizer!(with_optimizer(Mosek.Optimizer, QUIET = true))
 ```
