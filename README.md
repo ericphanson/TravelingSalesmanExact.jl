@@ -85,3 +85,5 @@ cities = [ 100*rand(2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities, with_optimizer(GLPK.Optimizer); verbose = true)
 plot_cities(cities[tour])
 ```
+
+See <https://ericphanson.github.io/TravelingSalesmanBenchmarks.jl/html/random_50_cities_stats.html> for a benchmark comparing the computation time between these solvers on random problems as well as comparing to  that of heuristics.
