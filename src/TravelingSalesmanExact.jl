@@ -6,12 +6,16 @@ const MOI = MathOptInterface
 export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer, set_default_optimizer!
 
 # added in Julia 1.2
-import Base.>
->(x) = Base.Fix2(>, x) 
+if VERSION < v"1.2.0-"
+    import Base.>
+    >(x) = Base.Fix2(>, x) 
+end
 
 # added in Julia 1.1
-isnothing(::Any) = false
-isnothing(::Nothing) = true
+if VERSION < v"1.1.0-"
+    isnothing(::Any) = false
+    isnothing(::Nothing) = true
+end
 
 const default_optimizer = Ref{Union{OptimizerFactory, Nothing}}(nothing)
 
