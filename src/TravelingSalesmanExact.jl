@@ -5,7 +5,17 @@ import MathOptInterface
 const MOI = MathOptInterface
 export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer, set_default_optimizer!
 
-≈(x) = Base.Fix2(isapprox, x)
+# added in Julia 1.2
+if VERSION < v"1.2.0-"
+    import Base.>
+    >(x) = Base.Fix2(>, x) 
+end
+
+# added in Julia 1.1
+if VERSION < v"1.1.0-"
+    isnothing(::Any) = false
+    isnothing(::Nothing) = true
+end
 
 const default_optimizer = Ref{Union{OptimizerFactory, Nothing}}(nothing)
 
@@ -49,9 +59,12 @@ function find_cycle(perm_matrix, starting_ind = 1)
     cycle = [starting_ind]
     prev_ind = ind = starting_ind
     while true
-        next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, 1:prev_ind-1]))
+        # the comparisons `x > (0.5)` should mean `x == 1`. Due to floating point results returned
+        # by the solvers, instead we sometimes have `x ≈ 1.0` instead. Since these are binary
+        # values, we might as well just compare to 1/2.
+        next_ind = findfirst(>(0.5), @views(perm_matrix[ind, 1:prev_ind-1]))
         if isnothing(next_ind)
-            next_ind = findfirst(≈(1.0), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
+            next_ind = findfirst(>(0.5), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
         end
         next_ind == starting_ind && break
         push!(cycle, next_ind)
@@ -146,7 +159,7 @@ The second argument is mandatory if a default optimizer has not been set (via `s
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
 function get_optimal_tour(cities::AbstractVector, with_optimizer = get_default_optimizer(); verbose = false, distance = euclidean_distance, symmetric = true)
-    with_optimizer === nothing && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
+    isnothing(with_optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [ distance(cities[i], cities[j]) for i=1:N, j=1:N ]
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose, cities)
