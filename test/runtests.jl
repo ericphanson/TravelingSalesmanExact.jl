@@ -55,7 +55,7 @@ end
     cost_sym = cost + transpose(cost)
     t4, c4 = test_tour(cost_sym; verbose = false)
     t5, c5 = test_tour(cost_sym; symmetric = true, verbose = false)
-    t6, c6 = test_tour(cost_sym; symmetric = false, verbose = false)
+    t6, c6 = test_tour(cost_sym; symmetric = false, verbose = true)
     @test c4 ≈ c5    
     @test c5 ≈ c6
 end
