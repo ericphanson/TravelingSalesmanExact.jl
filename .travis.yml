@@ -3,10 +3,15 @@ language: julia
 os:
   - linux
   - osx
+  - windows
 julia:
   - 1.0
+  - 1.1
   - 1.2
   - nightly
+branches: # build master branch + PRs
+  only:
+  - master
 matrix:
   allow_failures:
     - julia: nightly
