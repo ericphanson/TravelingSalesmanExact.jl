@@ -55,7 +55,7 @@ end
     cost_sym = cost + transpose(cost)
     t4, c4 = test_tour(cost_sym; verbose = false)
     t5, c5 = test_tour(cost_sym; symmetric = true, verbose = false)
-    t6, c6 = test_tour(cost_sym; symmetric = false, verbose = true)
+    t6, c6 = test_tour(cost_sym; symmetric = false, verbose = false)
     @test c4 ≈ c5    
     @test c5 ≈ c6
 end
@@ -63,7 +63,7 @@ end
 @testset "Small random cities" begin
     # cities = [ 100*rand(2) for _ in 1:5]
     cities = Array{Float64,1}[[48.8885, 41.0517], [35.6635, 12.1844], [95.6122, 15.9847], [67.5772, 9.54407], [16.6325, 51.9001]]
-    t7, c7 = test_tour(cities; verbose = false)
+    t7, c7 = test_tour(cities; verbose = true)
     t8, c8 = @inferred test_tour(cities; verbose = false, symmetric = false)
     cost = [ TravelingSalesmanExact.euclidean_distance(c1, c2) for c1 in cities, c2 in cities ]
     t9, c9 = test_tour(cost; verbose = false, symmetric = false)
