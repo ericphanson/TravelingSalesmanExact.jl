@@ -255,7 +255,7 @@ end
 Try to parse the ".tsp" file given by `filename`. Very simple implementation just to be able to test the optimization; may break on other files. Returns a list of cities for use in `get_optimal_tour`.
 """
 function simple_parse_tsp(filename; verbose = true)
-    cities = []
+    cities = Vector{Int}[]
     for line in readlines(filename)
         if startswith(line, '1':'9')
             nums = split(line, " ")
