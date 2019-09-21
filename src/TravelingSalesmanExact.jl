@@ -81,7 +81,7 @@ Returns a list of cycles from the permutation described by `perm_matrix`.
 function get_cycles(perm_matrix)
     N = size(perm_matrix, 1)
     remaining_inds = Set(1:N)
-    cycles = []
+    cycles = Vector{Int}[]
     while length(remaining_inds) > 0
         cycle = find_cycle(perm_matrix, first(remaining_inds))
         push!(cycles, cycle)
@@ -177,7 +177,7 @@ The second argument is mandatory if a default optimizer has not been set (via `s
 
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cost::AbstractMatrix, with_optimizer =  get_default_optimizer(); verbose = false, symmetric = issymmetric(cost))
+function get_optimal_tour(cost::AbstractMatrix, with_optimizer = get_default_optimizer(); verbose = false, symmetric = issymmetric(cost))
     size(cost, 1) == size(cost,2) || throw(ArgumentError("First argument must be a square matrix"))
     with_optimizer === nothing && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose)
