@@ -3,12 +3,16 @@ module TravelingSalesmanExact
 using JuMP, UnicodePlots, Logging, LinearAlgebra
 import MathOptInterface
 const MOI = MathOptInterface
-export get_optimal_tour, plot_cities, simple_parse_tsp, with_optimizer, set_default_optimizer!
+export get_optimal_tour,
+       plot_cities,
+       simple_parse_tsp,
+       with_optimizer,
+       set_default_optimizer!
 
 # added in Julia 1.2
 if VERSION < v"1.2.0-"
     import Base.>
-    >(x) = Base.Fix2(>, x) 
+    >(x) = Base.Fix2(>, x)
 end
 
 # added in Julia 1.1
@@ -17,7 +21,7 @@ if VERSION < v"1.1.0-"
     isnothing(::Nothing) = true
 end
 
-const default_optimizer = Ref{Union{OptimizerFactory, Nothing}}(nothing)
+const default_optimizer = Ref{Union{OptimizerFactory,Nothing}}(nothing)
 
 """
     set_default_optimizer(O::OptimizerFactory)
@@ -34,10 +38,10 @@ set_default_optimizer!(O::OptimizerFactory) = default_optimizer[] = O
 
 Gets the default optimizer, which is set by `set_default_optimizer`.
 """
-get_default_optimizer() =  default_optimizer[]
+get_default_optimizer() = default_optimizer[]
 
 
-reset_default_optimizer!() =  default_optimizer[] = nothing
+reset_default_optimizer!() = default_optimizer[] = nothing
 
 """
     plot_cities(cities)
@@ -64,7 +68,8 @@ function find_cycle(perm_matrix, starting_ind = 1)
         # values, we might as well just compare to 1/2.
         next_ind = findfirst(>(0.5), @views(perm_matrix[ind, 1:prev_ind-1]))
         if isnothing(next_ind)
-            next_ind = findfirst(>(0.5), @views(perm_matrix[ind, prev_ind+1:end]))  + prev_ind
+            next_ind = findfirst(>(0.5), @views(perm_matrix[ind, prev_ind+1:end])) +
+                       prev_ind
         end
         next_ind == starting_ind && break
         push!(cycle, next_ind)
@@ -113,7 +118,7 @@ function remove_cycles!(model, tour_matrix; symmetric)
     cycles = get_cycles(tour_matrix_val)
     length(cycles) == 1 && return 1
     for cycle in cycles
-        constr = symmetric ? 2*length(cycle)-2 : length(cycle)-1
+        constr = symmetric ? 2 * length(cycle) - 2 : length(cycle) - 1
         @constraint(model, sum(tour_matrix[cycle, cycle]) <= constr)
     end
     return length(cycles)
@@ -135,10 +140,10 @@ The `ATT` distance measure as specified in TSPLIB:
 function ATT(city1, city2)
     xd = city1[1] - city2[1]
     yd = city1[2] - city2[2]
-    r = sqrt( (xd^2 + yd^2) /10.0 )
+    r = sqrt((xd^2 + yd^2) / 10.0)
     t = round(Int, r)
     if t < r
-        d = t+ 1
+        d = t + 1
     else
         d = t
     end
@@ -158,10 +163,16 @@ The second argument is mandatory if a default optimizer has not been set (via `s
 
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cities::AbstractVector, with_optimizer = get_default_optimizer(); verbose = false, distance = euclidean_distance, symmetric = true)
+function get_optimal_tour(
+    cities::AbstractVector,
+    with_optimizer = get_default_optimizer();
+    verbose = false,
+    distance = euclidean_distance,
+    symmetric = true,
+)
     isnothing(with_optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
-    cost = [ distance(cities[i], cities[j]) for i=1:N, j=1:N ]
+    cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose, cities)
 end
 
@@ -177,47 +188,61 @@ The second argument is mandatory if a default optimizer has not been set (via `s
 
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
-function get_optimal_tour(cost::AbstractMatrix, with_optimizer = get_default_optimizer(); verbose = false, symmetric = issymmetric(cost))
-    size(cost, 1) == size(cost,2) || throw(ArgumentError("First argument must be a square matrix"))
+function get_optimal_tour(
+    cost::AbstractMatrix,
+    with_optimizer = get_default_optimizer();
+    verbose = false,
+    symmetric = issymmetric(cost),
+)
+    size(cost, 1) == size(
+        cost,
+        2,
+    ) || throw(ArgumentError("First argument must be a square matrix"))
     with_optimizer === nothing && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose)
 end
 
-function _get_optimal_tour(cost::AbstractMatrix, with_optimizer, symmetric, verbose, cities = nothing)
-    N = size(cost,1)
+function _get_optimal_tour(
+    cost::AbstractMatrix,
+    with_optimizer,
+    symmetric,
+    verbose,
+    cities = nothing,
+)
+    N = size(cost, 1)
     has_cities = !isnothing(cities)
 
     model = Model(with_optimizer)
     if symmetric
          # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
-        @variable(model, tour_matrix[1:N,1:N], Symmetric, binary=true)
+        @variable(model, tour_matrix[1:N, 1:N], Symmetric, binary = true)
 
         # cost of the tour
-        @objective(model, Min, sum(tour_matrix[i,j]*cost[i,j] for i=1:N,j=1:i))
+        @objective(model, Min, sum(tour_matrix[i, j] * cost[i, j] for i = 1:N, j = 1:i))
         for i = 1:N
-            @constraint(model, sum(tour_matrix[i,:]) == 2) # degree of each city is 2
-            @constraint(model, tour_matrix[i,i] == 0) # rule out cycles of length 1
+            @constraint(model, sum(tour_matrix[i, :]) == 2) # degree of each city is 2
+            @constraint(model, tour_matrix[i, i] == 0) # rule out cycles of length 1
         end
     else
         # `tour_matrix` will be a permutation matrix
-        @variable(model, tour_matrix[1:N,1:N], binary=true)
-        @objective(model, Min, sum(tour_matrix[i,j]*cost[i,j] for i=1:N,j=1:N))
+        @variable(model, tour_matrix[1:N, 1:N], binary = true)
+        @objective(model, Min, sum(tour_matrix[i, j] * cost[i, j] for i = 1:N, j = 1:N))
         for i = 1:N
-            @constraint(model, sum(tour_matrix[i,:]) == 1) # row-sum is 1
-            @constraint(model, sum(tour_matrix[:,i]) == 1) # col-sum is 1
-            @constraint(model, tour_matrix[i,i] == 0) # rule out cycles of length 1
+            @constraint(model, sum(tour_matrix[i, :]) == 1) # row-sum is 1
+            @constraint(model, sum(tour_matrix[:, i]) == 1) # col-sum is 1
+            @constraint(model, tour_matrix[i, i] == 0) # rule out cycles of length 1
             for j = 1:N
-                @constraint(model, tour_matrix[i,j]+tour_matrix[j,i] <= 1) # rule out cycles of length 2
+                @constraint(model, tour_matrix[i, j] + tour_matrix[j, i] <= 1) # rule out cycles of length 2
             end
-         end
+        end
     end
 
-   
-   if has_cities && verbose
+
+    if has_cities && verbose
         @info "Starting optimization." plot_cities(cities)
-   elseif verbose
+    elseif verbose
         @info "Starting optimization."
-   end
+    end
 
 
     iter = 0 # count for logging
@@ -231,7 +256,10 @@ function _get_optimal_tour(cost::AbstractMatrix, with_optimizer, symmetric, verb
         tot_cycles += num_cycles
         iter += 1
         if has_cities && verbose
-            @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles." plot_tour(cities, value.(tour_matrix))
+            @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles." plot_tour(
+                cities,
+                value.(tour_matrix),
+            )
         elseif verbose
             @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles."
         end
@@ -243,7 +271,7 @@ function _get_optimal_tour(cost::AbstractMatrix, with_optimizer, symmetric, verb
 
     if verbose
         @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
-        @info "Final path has length $(objective_value(model))." 
+        @info "Final path has length $(objective_value(model))."
         @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
     end
     return find_cycle(value.(tour_matrix)), objective_value(model)
