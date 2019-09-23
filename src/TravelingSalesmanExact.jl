@@ -46,7 +46,8 @@ reset_default_optimizer!() = default_optimizer[] = nothing
 """
     plot_cities(cities)
 
-Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in `cities`, in order (including going from the last city back to the first).
+Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in
+`cities`, in order (including going from the last city back to the first).
 """
 function plot_cities(cities)
     n = length(cities)
@@ -57,7 +58,8 @@ end
 """
     find_cycle(perm_matrix, starting_ind)
 
-Returns the cycle in the permutation described by `perm_matrix` which includes `starting_ind`.
+Returns the cycle in the permutation described by `perm_matrix` which includes
+`starting_ind`.
 """
 function find_cycle(perm_matrix, starting_ind = 1)
     cycle = [starting_ind]
@@ -152,14 +154,22 @@ end
 
 
 """
-    get_optimal_tour(cities::AbstractVector, with_optimizer = get_default_optimizer(); verbose = false, distance = euclidean_distance, symmetric = true)
+    get_optimal_tour(
+        cities::AbstractVector,
+        with_optimizer = get_default_optimizer();
+        verbose = false,
+        distance = euclidean_distance,
+        symmetric = true,
+    )
 
-Solves the travelling salesman problem for a list of cities using
-JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
-formulation and adaptively adding constraints to disallow non-maximal
-cycles. Returns an optimal tour and the cost of the optimal path. Optionally specify a distance metric. 
+Solves the travelling salesman problem for a list of cities using JuMP by
+formulating a MILP using the Dantzig-Fulkerson-Johnson formulation and
+adaptively adding constraints to disallow non-maximal cycles. Returns an optimal
+tour and the cost of the optimal path. Optionally specify a distance metric. 
 
-The second argument is mandatory if a default optimizer has not been set (via `set_default_optimizer`). This argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+The second argument is mandatory if a default optimizer has not been set (via
+`set_default_optimizer`). This argument should be the result of a call to
+`JuMP.with_optimizer`, e.g.
 
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
@@ -177,14 +187,21 @@ function get_optimal_tour(
 end
 
 """
-    get_optimal_tour(cost::AbstractMatrix, with_optimizer = get_default_optimizer(); verbose = false, symmetric = issymmetric(cost))
+    get_optimal_tour(
+        cost::AbstractMatrix,
+        with_optimizer = get_default_optimizer();
+        verbose = false,
+        symmetric = issymmetric(cost),
+    )
 
-Solves the travelling salesman problem for a square cost matrix using
-JuMP by formulating a MILP using the Dantzig-Fulkerson-Johnson
-formulation and adaptively adding constraints to disallow non-maximal
-cycles. Returns an optimal tour and the cost of the optimal path.
+Solves the travelling salesman problem for a square cost matrix using JuMP by
+formulating a MILP using the Dantzig-Fulkerson-Johnson formulation and
+adaptively adding constraints to disallow non-maximal cycles. Returns an optimal
+tour and the cost of the optimal path.
 
-The second argument is mandatory if a default optimizer has not been set (via `set_default_optimizer`). This argument should be the result of a call to `JuMP.with_optimizer`, e.g.
+The second argument is mandatory if a default optimizer has not been set (via
+`set_default_optimizer`). This argument should be the result of a call to
+`JuMP.with_optimizer`, e.g.
 
     get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
 """
@@ -194,11 +211,8 @@ function get_optimal_tour(
     verbose = false,
     symmetric = issymmetric(cost),
 )
-    size(cost, 1) == size(
-        cost,
-        2,
-    ) || throw(ArgumentError("First argument must be a square matrix"))
-    with_optimizer === nothing && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
+    size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
+    isnothing(with_optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, with_optimizer, symmetric, verbose)
 end
 
@@ -272,7 +286,10 @@ function _get_optimal_tour(
     if verbose
         @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
         @info "Final path has length $(objective_value(model))."
-        @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables, $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
+        @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
+            $(num_constraints(model,
+            GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and
+            $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
     end
     return find_cycle(value.(tour_matrix)), objective_value(model)
 end
@@ -280,7 +297,9 @@ end
 """
     simple_parse_tsp(filename; verbose = true)
 
-Try to parse the ".tsp" file given by `filename`. Very simple implementation just to be able to test the optimization; may break on other files. Returns a list of cities for use in `get_optimal_tour`.
+Try to parse the ".tsp" file given by `filename`. Very simple implementation
+just to be able to test the optimization; may break on other files. Returns a
+list of cities for use in `get_optimal_tour`.
 """
 function simple_parse_tsp(filename; verbose = true)
     cities = Vector{Int}[]
