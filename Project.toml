@@ -13,8 +13,8 @@ UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 [compat]
 julia = "1"
 UnicodePlots = "1"
-MathOptInterface = "0.9"
-JuMP = "0.20"
+MathOptInterface = "0.8, 0.9"
+JuMP = "0.19, 0.20"
 
 [extras]
 GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
