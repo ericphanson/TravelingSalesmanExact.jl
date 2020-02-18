@@ -1,8 +1,9 @@
 # TravelingSalesmanExact
 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/dev)
 [![Build Status](https://github.com/ericphanson/TravelingSalesmanExact.jl/workflows/CI/badge.svg)](https://github.com/ericphanson/TravelingSalesmanExact.jl/actions)
-[![codecov](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl)
+[![Coverage](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/dev)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/stable)
 
 This is a simple Julia package to solve the travelling salesman problem using an
 Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from
