@@ -6,7 +6,6 @@ const MOI = MathOptInterface
 export get_optimal_tour,
        plot_cities,
        simple_parse_tsp,
-       with_optimizer,
        set_default_optimizer!
 
 # added in Julia 1.2
@@ -21,17 +20,17 @@ if VERSION < v"1.1.0-"
     isnothing(::Nothing) = true
 end
 
-const default_optimizer = Ref{Union{OptimizerFactory,Nothing}}(nothing)
+const default_optimizer = Ref{Any}(nothing)
 
 """
-    set_default_optimizer(O::OptimizerFactory)
+    set_default_optimizer(O)
 
 Sets the default optimizer. For example,
 
     using GLPK
-    set_default_optimizer(with_optimizer(GLPK.Optimizer))
+    set_default_optimizer(GLPK.Optimizer)
 """
-set_default_optimizer!(O::OptimizerFactory) = default_optimizer[] = O
+set_default_optimizer!(O) = default_optimizer[] = O
 
 """
     get_default_optimizer()
@@ -156,7 +155,7 @@ end
 """
     get_optimal_tour(
         cities::AbstractVector,
-        with_optimizer = get_default_optimizer();
+        optimizer = get_default_optimizer();
         verbose = false,
         distance = euclidean_distance,
         symmetric = true,
@@ -168,28 +167,27 @@ adaptively adding constraints to disallow non-maximal cycles. Returns an optimal
 tour and the cost of the optimal path. Optionally specify a distance metric. 
 
 The second argument is mandatory if a default optimizer has not been set (via
-`set_default_optimizer`). This argument should be the result of a call to
-`JuMP.with_optimizer`, e.g.
+`set_default_optimizer`). This argument should be a function which creates an optimizer, e.g.
 
-    get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
+    get_optimal_tour(cities, GLPK.Optimizer)
 """
 function get_optimal_tour(
     cities::AbstractVector,
-    with_optimizer = get_default_optimizer();
+    optimizer = get_default_optimizer();
     verbose = false,
     distance = euclidean_distance,
     symmetric = true,
 )
-    isnothing(with_optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
+    isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
-    return _get_optimal_tour(cost, with_optimizer, symmetric, verbose, cities)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, cities)
 end
 
 """
     get_optimal_tour(
         cost::AbstractMatrix,
-        with_optimizer = get_default_optimizer();
+        optimizer = get_default_optimizer();
         verbose = false,
         symmetric = issymmetric(cost),
     )
@@ -200,25 +198,25 @@ adaptively adding constraints to disallow non-maximal cycles. Returns an optimal
 tour and the cost of the optimal path.
 
 The second argument is mandatory if a default optimizer has not been set (via
-`set_default_optimizer`). This argument should be the result of a call to
-`JuMP.with_optimizer`, e.g.
-
-    get_optimal_tour(cities, with_optimizer(GLPK.Optimizer))
+`set_default_optimizer`). This argument should be a function which creates an
+optimizer, e.g.
+    
+        get_optimal_tour(cities, GLPK.Optimizer)
 """
 function get_optimal_tour(
     cost::AbstractMatrix,
-    with_optimizer = get_default_optimizer();
+    optimizer = get_default_optimizer();
     verbose = false,
     symmetric = issymmetric(cost),
 )
     size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
-    isnothing(with_optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
-    return _get_optimal_tour(cost, with_optimizer, symmetric, verbose)
+    isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose)
 end
 
 function _get_optimal_tour(
     cost::AbstractMatrix,
-    with_optimizer,
+    optimizer,
     symmetric,
     verbose,
     cities = nothing,
@@ -226,7 +224,7 @@ function _get_optimal_tour(
     N = size(cost, 1)
     has_cities = !isnothing(cities)
 
-    model = Model(with_optimizer)
+    model = Model(optimizer)
     if symmetric
          # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
         @variable(model, tour_matrix[1:N, 1:N], Symmetric, binary = true)

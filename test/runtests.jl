@@ -1,5 +1,5 @@
 using TravelingSalesmanExact, GLPK, Test
-set_default_optimizer!(with_optimizer(GLPK.Optimizer))
+set_default_optimizer!(GLPK.Optimizer)
 
 function test_valid_tour(tour, L)
     @test length(tour) == L
@@ -106,7 +106,7 @@ end
     cost = rand(5, 5)
     TravelingSalesmanExact.reset_default_optimizer!()
     @test_throws ArgumentError test_tour(cost)
-    set_default_optimizer!(with_optimizer(GLPK.Optimizer))
+    set_default_optimizer!(GLPK.Optimizer)
 end
 
 @testset "att48.tsp" begin
