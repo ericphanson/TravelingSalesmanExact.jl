@@ -1,2 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+TravelingSalesmanExact = "737fac7d-4440-55ef-927e-002196e95561"
+
+[compat]
+Documenter = "0.24"
