@@ -1,7 +1,7 @@
 # TravelingSalesmanExact
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/dev)
-[![Build Status](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl.svg?branch=master)](https://travis-ci.com/ericphanson/TravelingSalesmanExact.jl)
+[![Build Status](https://github.com/ericphanson/TravelingSalesmanExact.jl/workflows/CI/badge.svg)](https://github.com/ericphanson/TravelingSalesmanExact.jl/actions)
 [![codecov](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ericphanson/TravelingSalesmanExact.jl)
 
 This is a simple Julia package to solve the travelling salesman problem using an
