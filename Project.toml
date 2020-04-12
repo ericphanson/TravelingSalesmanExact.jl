@@ -11,8 +11,8 @@ MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [compat]
-JuMP = "0.19, 0.20, 0.21"
-MathOptInterface = "0.8, 0.9"
+JuMP = "0.21"
+MathOptInterface = "0.9"
 UnicodePlots = "1"
 julia = "1"
 

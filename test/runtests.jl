@@ -39,7 +39,6 @@ function test_tour(input, opt = TravelingSalesmanExact.get_default_optimizer(); 
     return t, c
 end
 
-
 @testset "Small random asymmetric" begin
     # chosen via rand(5,5)
     cost = 10 *
@@ -52,13 +51,15 @@ end
     ]
     t1, c1 = test_tour(cost; verbose = true)
     t2, c2 = test_tour(cost; verbose = false)
+    t3, c3 = test_tour(cost; verbose = false, lazy_constraints = true)
     @test c1 ≈ c2
+    @test c2 ≈ c3
 
     # incorrect `symmetric` should give the wrong answers
-    t3, c3 = get_optimal_tour(cost; verbose = false, symmetric = true)
-    test_valid_tour(t3, 5)
-    @test !(c2 ≈ c3)
-    @test !(c3 ≈ tour_cost(t3, cost))
+    t4, c4 = get_optimal_tour(cost; verbose = false, symmetric = true)
+    test_valid_tour(t4, 5)
+    @test !(c2 ≈ c4)
+    @test !(c4 ≈ tour_cost(t4, cost))
 end
 
 @testset "Small random symmetric" begin
@@ -74,8 +75,10 @@ end
     t4, c4 = test_tour(cost_sym; verbose = false)
     t5, c5 = test_tour(cost_sym; symmetric = true, verbose = false)
     t6, c6 = test_tour(cost_sym; symmetric = false, verbose = false)
+    t7, c7 = test_tour(cost_sym; symmetric = false, verbose = true, lazy_constraints = true)
     @test c4 ≈ c5
     @test c5 ≈ c6
+    @test c6 ≈ c7
 end
 
 @testset "Small random cities" begin

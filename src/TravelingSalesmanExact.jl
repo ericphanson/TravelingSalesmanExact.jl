@@ -151,6 +151,9 @@ function ATT(city1, city2)
     return d
 end
 
+abstract type Method end
+struct LazyConstraints <: Method end
+struct SequentialSolves <: Method end
 
 """
     get_optimal_tour(
@@ -159,6 +162,7 @@ end
         verbose = false,
         distance = euclidean_distance,
         symmetric = true,
+        lazy_constraints = false,
     )
 
 Solves the travelling salesman problem for a list of cities using JuMP by
@@ -170,6 +174,13 @@ The second argument is mandatory if a default optimizer has not been set (via
 `set_default_optimizer`). This argument should be a function which creates an optimizer, e.g.
 
     get_optimal_tour(cities, GLPK.Optimizer)
+
+There are three boolean optional keyword arguments:
+
+* `verbose` indicates whether or not to print lots of information as the algorithm proceeds.
+* `symmetric` indicates whether or not the distance metric used is symmetric (the default is to assume that it is)
+* `lazy_constraints` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)).
+
 """
 function get_optimal_tour(
     cities::AbstractVector,
@@ -177,19 +188,22 @@ function get_optimal_tour(
     verbose = false,
     distance = euclidean_distance,
     symmetric = true,
+    lazy_constraints = false,
 )
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose, cities)
+    method = lazy_constraints ? LazyConstraints() : SequentialSolves()
+    return _get_optimal_tour(method, cost, optimizer, symmetric, verbose, cities)
 end
 
 """
     get_optimal_tour(
         cost::AbstractMatrix,
         optimizer = get_default_optimizer();
-        verbose = false,
-        symmetric = issymmetric(cost),
+        verbose::Bool = false,
+        symmetric::Bool = issymmetric(cost),
+        lazy::Bool = true,
     )
 
 Solves the travelling salesman problem for a square cost matrix using JuMP by
@@ -202,53 +216,69 @@ The second argument is mandatory if a default optimizer has not been set (via
 optimizer, e.g.
     
         get_optimal_tour(cities, GLPK.Optimizer)
+
+There are three boolean optional keyword arguments:
+
+* `verbose` indicates whether or not to print lots of information as the algorithm proceeds.
+* `symmetric` indicates whether or not the `cost` matrix is symmetric (the default is to check via `issymmetric`)
+* `lazy` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)).
+
 """
 function get_optimal_tour(
     cost::AbstractMatrix,
     optimizer = get_default_optimizer();
     verbose = false,
     symmetric = issymmetric(cost),
+    lazy_constraints = false,
 )
     size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose)
+    method = lazy_constraints ? LazyConstraints() : SequentialSolves()
+    return _get_optimal_tour(method, cost, optimizer, symmetric, verbose)
 end
 
+
+function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
+    N = size(cost, 1)
+    if symmetric
+        # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
+       @variable(model, tour_matrix[1:N, 1:N], Symmetric, binary = true)
+
+       # cost of the tour
+       @objective(model, Min, sum(tour_matrix[i, j] * cost[i, j] for i = 1:N, j = 1:i))
+       for i = 1:N
+           @constraint(model, sum(tour_matrix[i, :]) == 2) # degree of each city is 2
+           @constraint(model, tour_matrix[i, i] == 0) # rule out cycles of length 1
+       end
+   else
+       # `tour_matrix` will be a permutation matrix
+       @variable(model, tour_matrix[1:N, 1:N], binary = true)
+       @objective(model, Min, sum(tour_matrix[i, j] * cost[i, j] for i = 1:N, j = 1:N))
+       for i = 1:N
+           @constraint(model, sum(tour_matrix[i, :]) == 1) # row-sum is 1
+           @constraint(model, sum(tour_matrix[:, i]) == 1) # col-sum is 1
+           @constraint(model, tour_matrix[i, i] == 0) # rule out cycles of length 1
+           for j = 1:N
+               @constraint(model, tour_matrix[i, j] + tour_matrix[j, i] <= 1) # rule out cycles of length 2
+           end
+       end
+   end
+   return tour_matrix
+end
+
+
 function _get_optimal_tour(
+    ::SequentialSolves,
     cost::AbstractMatrix,
     optimizer,
     symmetric,
     verbose,
     cities = nothing,
 )
-    N = size(cost, 1)
     has_cities = !isnothing(cities)
 
     model = Model(optimizer)
-    if symmetric
-         # `tour_matrix` has tour_matrix[i,j] = 1 iff cities i and j should be connected
-        @variable(model, tour_matrix[1:N, 1:N], Symmetric, binary = true)
-
-        # cost of the tour
-        @objective(model, Min, sum(tour_matrix[i, j] * cost[i, j] for i = 1:N, j = 1:i))
-        for i = 1:N
-            @constraint(model, sum(tour_matrix[i, :]) == 2) # degree of each city is 2
-            @constraint(model, tour_matrix[i, i] == 0) # rule out cycles of length 1
-        end
-    else
-        # `tour_matrix` will be a permutation matrix
-        @variable(model, tour_matrix[1:N, 1:N], binary = true)
-        @objective(model, Min, sum(tour_matrix[i, j] * cost[i, j] for i = 1:N, j = 1:N))
-        for i = 1:N
-            @constraint(model, sum(tour_matrix[i, :]) == 1) # row-sum is 1
-            @constraint(model, sum(tour_matrix[:, i]) == 1) # col-sum is 1
-            @constraint(model, tour_matrix[i, i] == 0) # rule out cycles of length 1
-            for j = 1:N
-                @constraint(model, tour_matrix[i, j] + tour_matrix[j, i] <= 1) # rule out cycles of length 2
-            end
-        end
-    end
-
+    tour_matrix = build_tour_matrix(model, cost, symmetric)
 
     if has_cities && verbose
         @info "Starting optimization." plot_cities(cities)
@@ -267,19 +297,30 @@ function _get_optimal_tour(
         num_cycles = remove_cycles!(model, tour_matrix; symmetric = symmetric)
         tot_cycles += num_cycles
         iter += 1
-        if has_cities && verbose
-            @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles." plot_tour(
-                cities,
-                value.(tour_matrix),
-            )
-        elseif verbose
-            @info "Iteration $iter took $(round(t, digits=3))s, disallowed $num_cycles cycles."
+        if verbose
+            if length(num_cycles) == 1
+                description = "found cycle cycle"
+            else
+                description = "disallowed $num_cycles cycles"
+            end
+
+            if has_cities
+                @info "Iteration $iter took $(round(t, digits=3))s, $description." plot_tour(
+                    cities,
+                    value.(tour_matrix),
+                )
+            else
+                @info "Iteration $iter took $(round(t, digits=3))s, $description."
+            end
         end
     end
     tot_cycles -= 1 # remove the true cycle
 
     status = termination_status(model)
     status == MOI.OPTIMAL || @warn(status)
+
+    cycles = get_cycles(value.(tour_matrix))
+    length(cycles) == 1 || error("Something went wrong; did not elimate all subtours. Please file an issue.")
 
     if verbose
         @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
@@ -289,7 +330,86 @@ function _get_optimal_tour(
             GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and
             $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
     end
-    return find_cycle(value.(tour_matrix)), objective_value(model)
+    return first(cycles), objective_value(model)
+end
+
+function _get_optimal_tour(
+    ::LazyConstraints,
+    cost::AbstractMatrix,
+    optimizer,
+    symmetric,
+    verbose,
+    cities = nothing,
+)
+    has_cities = !isnothing(cities)
+
+    model = Model(optimizer)
+    tour_matrix = build_tour_matrix(model, cost, symmetric)
+
+    if has_cities && verbose
+        @info "Starting optimization." plot_cities(cities)
+    elseif verbose
+        @info "Starting optimization."
+    end
+
+
+    iter = 0 # count for logging
+    tot_cycles = 0 # count for logging
+
+    function remove_cycles_callback(cb_data)
+        tour_matrix_val = callback_value.(Ref(cb_data), tour_matrix)
+        any(x -> !(x ≈ round(Int, x)), tour_matrix_val) && return
+        iter += 1
+
+        cycles = get_cycles(tour_matrix_val)
+
+        if length(cycles) == 1
+            if has_cities && verbose
+                @info "Lazy constaint triggered ($iter); found single cycle." plot_tour(
+                    cities,
+                    tour_matrix_val,
+                )
+            elseif verbose
+                @info "Lazy constaint triggered ($iter); found single cycle."
+            end
+            return nothing
+        end
+
+        for cycle in cycles
+            constr = symmetric ? 2 * length(cycle) - 2 : length(cycle) - 1
+            cycle_constraint = @build_constraint( sum(tour_matrix[cycle, cycle]) <= constr)
+            MOI.submit(model, MOI.LazyConstraint(cb_data), cycle_constraint)
+        end
+        num_cycles = length(cycles)
+        tot_cycles += num_cycles
+        if has_cities && verbose
+            @info "Lazy constaint triggered ($iter); disallowed $num_cycles cycles." plot_tour(
+                cities,
+                tour_matrix_val,
+            )
+        elseif verbose
+            @info "Lazy constaint triggered ($iter); disallowed $num_cycles cycles."
+        end
+
+    end
+
+    MOI.set(model, MOI.LazyConstraintCallback(), remove_cycles_callback)
+    t = @elapsed optimize!(model)
+    status = termination_status(model)
+    status == MOI.OPTIMAL || @warn(status)
+
+    cycles = get_cycles(value.(tour_matrix))
+    length(cycles) == 1 || error("Something went wrong; did not elimate all subtours. Please file an issue.")
+
+    if verbose
+        @info "Optimization finished; lazily disallowed $tot_cycles cycles. Took time $(round(t,digits=3))s."
+        @info "Final path has length $(objective_value(model))."
+        @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
+            $(num_constraints(model,
+            GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and
+            $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
+    end
+    return first(cycles), objective_value(model)
 end
 
 """
@@ -312,6 +432,12 @@ function simple_parse_tsp(filename; verbose = true)
             println(line)
         end
     end
+    return cities
+end
+
+function get_ATT48_cities()
+    path = joinpath(@__DIR__, "..", "test", "att48.tsp")
+    cities = simple_parse_tsp(path; verbose = false)
     return cities
 end
 
