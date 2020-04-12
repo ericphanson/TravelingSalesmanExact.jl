@@ -151,10 +151,6 @@ function ATT(city1, city2)
     return d
 end
 
-abstract type Method end
-struct LazyConstraints <: Method end
-struct SequentialSolves <: Method end
-
 """
     get_optimal_tour(
         cities::AbstractVector,
@@ -193,8 +189,8 @@ function get_optimal_tour(
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
-    method = lazy_constraints ? LazyConstraints() : SequentialSolves()
-    return _get_optimal_tour(method, cost, optimizer, symmetric, verbose, cities)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities)
+
 end
 
 """
@@ -233,8 +229,7 @@ function get_optimal_tour(
 )
     size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
-    method = lazy_constraints ? LazyConstraints() : SequentialSolves()
-    return _get_optimal_tour(method, cost, optimizer, symmetric, verbose)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints)
 end
 
 
@@ -268,11 +263,11 @@ end
 
 
 function _get_optimal_tour(
-    ::SequentialSolves,
     cost::AbstractMatrix,
     optimizer,
     symmetric,
     verbose,
+    lazy_constraints,
     cities = nothing,
 )
     has_cities = !isnothing(cities)
@@ -287,34 +282,42 @@ function _get_optimal_tour(
     end
 
 
-    iter = 0 # count for logging
-    tot_cycles = 0 # count for logging
+    # counts for logging
+    iter = Ref(0) 
+    tot_cycles = Ref(0)
+
+    if lazy_constraints
+        remove_cycles_callback = make_remove_cycles_callback(model, tour_matrix, has_cities, cities, verbose, symmetric, tot_cycles)
+        MOI.set(model, MOI.LazyConstraintCallback(), remove_cycles_callback)
+    end
+    
     num_cycles = 2 # just something > 1
+
     while num_cycles > 1
         t = @elapsed optimize!(model)
         status = termination_status(model)
-        status == MOI.OPTIMAL || throw(ErrorException("Error: problem status $status"))
+        status == MOI.OPTIMAL || @warn("Problem status not optimal; got status $status")
         num_cycles = remove_cycles!(model, tour_matrix; symmetric = symmetric)
-        tot_cycles += num_cycles
-        iter += 1
+        tot_cycles[] += num_cycles
+        iter[] += 1
         if verbose
-            if length(num_cycles) == 1
-                description = "found cycle cycle"
+            if num_cycles == 1
+                description = "found a full cycle!"
             else
-                description = "disallowed $num_cycles cycles"
+                description = "disallowed $num_cycles cycles."
             end
 
             if has_cities
-                @info "Iteration $iter took $(round(t, digits=3))s, $description." plot_tour(
+                @info "Iteration $(iter[]) took $(round(t, digits=3))s, $description" plot_tour(
                     cities,
                     value.(tour_matrix),
                 )
             else
-                @info "Iteration $iter took $(round(t, digits=3))s, $description."
+                @info "Iteration $(iter[]) took $(round(t, digits=3))s, $description"
             end
         end
     end
-    tot_cycles -= 1 # remove the true cycle
+    tot_cycles[] -= 1 # remove the true cycle
 
     status = termination_status(model)
     status == MOI.OPTIMAL || @warn(status)
@@ -323,7 +326,7 @@ function _get_optimal_tour(
     length(cycles) == 1 || error("Something went wrong; did not elimate all subtours. Please file an issue.")
 
     if verbose
-        @info "Optimization finished; adaptively disallowed $tot_cycles cycles."
+        @info "Optimization finished; adaptively disallowed $(tot_cycles[]) cycles."
         @info "Final path has length $(objective_value(model))."
         @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
             $(num_constraints(model,
@@ -333,44 +336,26 @@ function _get_optimal_tour(
     return first(cycles), objective_value(model)
 end
 
-function _get_optimal_tour(
-    ::LazyConstraints,
-    cost::AbstractMatrix,
-    optimizer,
-    symmetric,
-    verbose,
-    cities = nothing,
-)
-    has_cities = !isnothing(cities)
-
-    model = Model(optimizer)
-    tour_matrix = build_tour_matrix(model, cost, symmetric)
-
-    if has_cities && verbose
-        @info "Starting optimization." plot_cities(cities)
-    elseif verbose
-        @info "Starting optimization."
-    end
-
-
-    iter = 0 # count for logging
-    tot_cycles = 0 # count for logging
-
-    function remove_cycles_callback(cb_data)
+function make_remove_cycles_callback(model, tour_matrix, has_cities, cities, verbose, symmetric, tot_cycles)
+    num_triggers = Ref(0)
+    return function remove_cycles_callback(cb_data)
         tour_matrix_val = callback_value.(Ref(cb_data), tour_matrix)
-        any(x -> !(x ≈ round(Int, x)), tour_matrix_val) && return
-        iter += 1
 
+        # We only handle integral solutions
+        # Could possibly also find cycles in the integer part of a mixed solution.
+        any(x -> !(x ≈ round(Int, x)), tour_matrix_val) && return
+
+        num_triggers[] += 1
         cycles = get_cycles(tour_matrix_val)
 
         if length(cycles) == 1
             if has_cities && verbose
-                @info "Lazy constaint triggered ($iter); found single cycle." plot_tour(
+                @info "Lazy constaint triggered ($(num_triggers[])); found a full cycle!" plot_tour(
                     cities,
                     tour_matrix_val,
                 )
             elseif verbose
-                @info "Lazy constaint triggered ($iter); found single cycle."
+                @info "Lazy constaint triggered ($(num_triggers[])); found a full cycle!"
             end
             return nothing
         end
@@ -380,37 +365,20 @@ function _get_optimal_tour(
             cycle_constraint = @build_constraint( sum(tour_matrix[cycle, cycle]) <= constr)
             MOI.submit(model, MOI.LazyConstraint(cb_data), cycle_constraint)
         end
+
         num_cycles = length(cycles)
-        tot_cycles += num_cycles
+        tot_cycles[] += num_cycles
         if has_cities && verbose
-            @info "Lazy constaint triggered ($iter); disallowed $num_cycles cycles." plot_tour(
+            @info "Lazy constaint triggered ($(num_triggers[])); disallowed $num_cycles cycles." plot_tour(
                 cities,
                 tour_matrix_val,
             )
         elseif verbose
-            @info "Lazy constaint triggered ($iter); disallowed $num_cycles cycles."
+            @info "Lazy constaint triggered ($(num_triggers[])); disallowed $num_cycles cycles."
         end
-
     end
-
-    MOI.set(model, MOI.LazyConstraintCallback(), remove_cycles_callback)
-    t = @elapsed optimize!(model)
-    status = termination_status(model)
-    status == MOI.OPTIMAL || @warn(status)
-
-    cycles = get_cycles(value.(tour_matrix))
-    length(cycles) == 1 || error("Something went wrong; did not elimate all subtours. Please file an issue.")
-
-    if verbose
-        @info "Optimization finished; lazily disallowed $tot_cycles cycles. Took time $(round(t,digits=3))s."
-        @info "Final path has length $(objective_value(model))."
-        @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
-            $(num_constraints(model,
-            GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and
-            $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
-    end
-    return first(cycles), objective_value(model)
 end
+
 
 """
     simple_parse_tsp(filename; verbose = true)
@@ -435,8 +403,21 @@ function simple_parse_tsp(filename; verbose = true)
     return cities
 end
 
+"""
+    get_ATT48_cities() -> Vector{Vector{Int}}
+
+A simple helper function to get the problem data for the ATT48 TSPLIB problem.
+
+# Example
+
+```julia
+using TravelingSalesmanExact, GLPK
+cities = TravelingSalesmanExact.get_ATT48_cities()
+get_optimal_tour(cities, GLPK.Optimizer, distance = TravelingSalesmanExact.ATT)
+```
+"""
 function get_ATT48_cities()
-    path = joinpath(@__DIR__, "..", "test", "att48.tsp")
+    path = joinpath(@__DIR__, "..", "data", "att48.tsp")
     cities = simple_parse_tsp(path; verbose = false)
     return cities
 end
