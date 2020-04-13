@@ -1,7 +1,7 @@
 name = "TravelingSalesmanExact"
 uuid = "737fac7d-4440-55ef-927e-002196e95561"
 authors = ["Eric <5846501+ericphanson@users.noreply.github.com>"]
-version = "0.3.4"
+version = "0.3.5"
 
 [deps]
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
