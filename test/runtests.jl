@@ -39,7 +39,6 @@ function test_tour(input, opt = TravelingSalesmanExact.get_default_optimizer(); 
     return t, c
 end
 
-
 @testset "Small random asymmetric" begin
     # chosen via rand(5,5)
     cost = 10 *
@@ -52,13 +51,22 @@ end
     ]
     t1, c1 = test_tour(cost; verbose = true)
     t2, c2 = test_tour(cost; verbose = false)
+    t3, c3 = test_tour(cost; verbose = false, lazy_constraints = true)
     @test c1 ≈ c2
+    @test c2 ≈ c3
 
     # incorrect `symmetric` should give the wrong answers
-    t3, c3 = get_optimal_tour(cost; verbose = false, symmetric = true)
-    test_valid_tour(t3, 5)
-    @test !(c2 ≈ c3)
-    @test !(c3 ≈ tour_cost(t3, cost))
+    t4, c4 = get_optimal_tour(cost; verbose = false, symmetric = true)
+    test_valid_tour(t4, 5)
+    @test !(c2 ≈ c4)
+    @test !(c4 ≈ tour_cost(t4, cost))
+end
+
+@testset "Medium random asymmetric" begin
+    cost = 10 * rand(15, 15)
+    t1, c1 = test_tour(cost; verbose = false)
+    t2, c2 = test_tour(cost; verbose = true, lazy_constraints = true)
+    @test c1 ≈ c2
 end
 
 @testset "Small random symmetric" begin
@@ -74,8 +82,10 @@ end
     t4, c4 = test_tour(cost_sym; verbose = false)
     t5, c5 = test_tour(cost_sym; symmetric = true, verbose = false)
     t6, c6 = test_tour(cost_sym; symmetric = false, verbose = false)
+    t7, c7 = test_tour(cost_sym; symmetric = false, verbose = true, lazy_constraints = true)
     @test c4 ≈ c5
     @test c5 ≈ c6
+    @test c6 ≈ c7
 end
 
 @testset "Small random cities" begin
@@ -96,7 +106,37 @@ end
     @test c8 ≈ c9
     @test c9 ≈ c10
     @test c8 isa Float64
+end
 
+
+@testset "Medium random cities" begin
+    # cities = [ 100*rand(2) for _ in 1:15]
+    cities = Array{Float64,1}[
+        [53.80996646037832, 19.19022341362766],
+        [66.31428678667224, 61.80858818555463],
+        [36.353148448445616, 41.255152847278474],
+        [90.27061139767463, 6.978822544781482],
+        [53.764677734646504, 29.81193167526588],
+        [99.44803233011115, 66.55866205554817],
+        [38.928236331570986, 18.22266760966855],
+        [21.194033394576728, 56.14389699364914],
+        [6.430489908372161, 92.08608470530129],
+        [67.01950679275805, 53.82196541323463],
+        [57.04078593130859, 88.74875672836768],
+        [40.91801899608445, 23.47673907020007],
+        [8.889246634653713, 44.183494522157886],
+        [82.70468776751652, 74.73476674725042],
+        [8.637366704185245, 87.23819026270408]
+    ]
+    t7, c7 = test_tour(cities; verbose = true, lazy_constraints=true)
+    t8, c8 = @inferred test_tour(cities; verbose = false, symmetric = false)
+    cost = [TravelingSalesmanExact.euclidean_distance(c1, c2) for c1 in cities, c2 in cities]
+    t9, c9 = test_tour(cost; verbose = false, symmetric = false)
+    t10, c10 = test_tour(cost; verbose = false, symmetric = true)
+    @test c7 ≈ c8
+    @test c8 ≈ c9
+    @test c9 ≈ c10
+    @test c8 isa Float64
 end
 
 @testset "Exceptions" begin
@@ -110,7 +150,10 @@ end
 end
 
 @testset "att48.tsp" begin
-    cities = simple_parse_tsp(joinpath(@__DIR__, "att48.tsp"))
+    cities = simple_parse_tsp(joinpath(@__DIR__, "..", "data", "att48.tsp"))
+
+    @test cities == TravelingSalesmanExact.get_ATT48_cities()
+
     sym_tour, sym_cost = test_tour(
         cities;
         distance = TravelingSalesmanExact.ATT,
