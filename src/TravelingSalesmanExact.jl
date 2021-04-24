@@ -285,6 +285,7 @@ function _get_optimal_tour(
     # counts for logging
     iter = Ref(0) 
     tot_cycles = Ref(0)
+    all_time = Ref(0.0)
 
     if lazy_constraints
         remove_cycles_callback = make_remove_cycles_callback(model, tour_matrix, has_cities, cities, verbose, symmetric, tot_cycles)
@@ -295,6 +296,7 @@ function _get_optimal_tour(
 
     while num_cycles > 1
         t = @elapsed optimize!(model)
+        all_time[] += t
         status = termination_status(model)
         status == MOI.OPTIMAL || @warn("Problem status not optimal; got status $status")
         num_cycles = remove_cycles!(model, tour_matrix; symmetric = symmetric)
@@ -327,6 +329,7 @@ function _get_optimal_tour(
 
     if verbose
         @info "Optimization finished; adaptively disallowed $(tot_cycles[]) cycles."
+        @info "The optimizational run took $(all_time[]) seconds."
         @info "Final path has length $(objective_value(model))."
         @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
             $(num_constraints(model,
