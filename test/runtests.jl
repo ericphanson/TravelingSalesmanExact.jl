@@ -1,4 +1,5 @@
 using TravelingSalesmanExact, GLPK, Test
+using TravelingSalesmanExact: format_time
 set_default_optimizer!(GLPK.Optimizer)
 
 function test_valid_tour(tour, L)
@@ -37,6 +38,13 @@ function test_tour(input, opt = TravelingSalesmanExact.get_default_optimizer(); 
         @test c ≈ tour_cost(t, input)
     end
     return t, c
+end
+
+@testset "`format_time`" begin
+    @test format_time(0.052342) == "0.0523 seconds"
+    @test format_time(0.452342) == "0.452 seconds"
+    @test format_time(1000.452342) == "1000 seconds"
+    @test format_time(1.452342) == "1.45 seconds"
 end
 
 @testset "Small random asymmetric" begin
