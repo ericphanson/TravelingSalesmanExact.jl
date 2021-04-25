@@ -1,4 +1,4 @@
-name: CI
+name: Nightly CI
 on:
   push:
     branches:
@@ -6,7 +6,7 @@ on:
       - main
       - /^release-.*$/
     paths:
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/ci_nightly.yml'
       - 'test/**'
       - 'src/**'
       - 'deps/**'
@@ -14,7 +14,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/ci_nightly.yml'
       - 'test/**'
       - 'src/**'
       - 'deps/**'
@@ -27,8 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.0'
-          - '1'
+          - 'nightly'
         os:
           - windows-latest
           - ubuntu-latest

@@ -1,6 +1,6 @@
 module TravelingSalesmanExact
 
-using JuMP, UnicodePlots, Logging, LinearAlgebra
+using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
 import MathOptInterface
 const MOI = MathOptInterface
 export get_optimal_tour,
@@ -51,7 +51,7 @@ Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in
 function plot_cities(cities)
     n = length(cities)
     inc(a) = a == n ? one(a) : a + 1
-    lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n])
+    return lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n])
 end
 
 """
@@ -76,7 +76,7 @@ function find_cycle(perm_matrix, starting_ind = 1)
         push!(cycle, next_ind)
         prev_ind, ind = ind, next_ind
     end
-    cycle
+    return cycle
 end
 
 """
@@ -93,7 +93,7 @@ function get_cycles(perm_matrix)
         push!(cycles, cycle)
         setdiff!(remaining_inds, cycle)
     end
-    cycles
+    return cycles
 end
 
 """
@@ -104,7 +104,7 @@ Show a plot of the tour described by `perm_matrix` of the cities in the vector `
 function plot_tour(cities, perm_matrix)
     cycles = get_cycles(perm_matrix)
     tour = reduce(vcat, cycles)
-    plot_cities(cities[tour])
+    return plot_cities(cities[tour])
 end
 
 """
@@ -190,7 +190,6 @@ function get_optimal_tour(
     N = length(cities)
     cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities)
-
 end
 
 """
@@ -261,6 +260,23 @@ function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
    return tour_matrix
 end
 
+function format_time(t)
+    # I want more decimal digits to print the smaller the number is,
+    # but never more than 4 decimal digits.
+    # I think `round(t; sigdigits = ...)` might be a way to do
+    # something like this, but I couldn't get it to work.
+    str = if t > 100
+        @sprintf("%.0f", t)
+    elseif t > 1
+        @sprintf("%.2f", t)
+    elseif t > 0.1
+        @sprintf("%.3f", t)
+    else
+        @sprintf("%.4f", t)
+    end
+    return str * " seconds"
+end
+
 
 function _get_optimal_tour(
     cost::AbstractMatrix,
@@ -280,7 +296,6 @@ function _get_optimal_tour(
     elseif verbose
         @info "Starting optimization."
     end
-
 
     # counts for logging
     iter = Ref(0) 
@@ -310,12 +325,12 @@ function _get_optimal_tour(
             end
 
             if has_cities
-                @info "Iteration $(iter[]) took $(round(t, digits=3))s, $description" plot_tour(
+                @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
                     cities,
                     value.(tour_matrix),
                 )
             else
-                @info "Iteration $(iter[]) took $(round(t, digits=3))s, $description"
+                @info "Iteration $(iter[]) took $(format_time(t)), $description"
             end
         end
     end
@@ -328,9 +343,11 @@ function _get_optimal_tour(
     length(cycles) == 1 || error("Something went wrong; did not elimate all subtours. Please file an issue.")
 
     if verbose
+        obj = objective_value(model)
+        obj_string = isinteger(obj) ? @sprintf("%i", obj) : @sprintf("%.2f", obj)
         @info "Optimization finished; adaptively disallowed $(tot_cycles[]) cycles."
-        @info "The optimization runs took $(all_time[]) seconds in total."
-        @info "Final path has length $(objective_value(model))."
+        @info "The optimization runs took $(format_time(all_time[])) in total."
+        @info "Final path has length $(obj_string)."
         @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
             $(num_constraints(model,
             GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and
@@ -380,6 +397,7 @@ function make_remove_cycles_callback(model, tour_matrix, has_cities, cities, ver
             @info "Lazy constaint triggered ($(num_triggers[])); disallowed $num_cycles cycles."
         end
     end
+    return nothing
 end
 
 
