@@ -329,7 +329,7 @@ function _get_optimal_tour(
 
     if verbose
         @info "Optimization finished; adaptively disallowed $(tot_cycles[]) cycles."
-        @info "The optimizational run took $(all_time[]) seconds."
+        @info "The optimization runs took $(all_time[]) seconds in total."
         @info "Final path has length $(objective_value(model))."
         @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
             $(num_constraints(model,
