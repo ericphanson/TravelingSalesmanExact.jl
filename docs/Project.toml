@@ -1,6 +1,8 @@
 [deps]
+Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
 TravelingSalesmanExact = "737fac7d-4440-55ef-927e-002196e95561"
 
 [compat]
-Documenter = "0.24"
+Documenter = "0.27"
