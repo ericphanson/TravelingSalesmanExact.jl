@@ -55,8 +55,23 @@ macro gif_str(commands)
     path = joinpath(ASCIINEMA_CAST_DIR, filename)
     isfile(path) || record(commands, path)
     relative_path = "./assets/gifs/$filename"
+
+    # We start at 0.25 seconds so that we can skip the initial 
+    # printing of commands and some of the Julia startup time.
     return HTML("""<asciinema-player src="$relative_path" idle-time-limit="2" autoplay="true" start-at="0.25"></asciinema-player >""")
 end
+
+
+gif"""
+│ using TravelingSalesmanExact, GLPK
+│ set_default_optimizer!(GLPK.Optimizer)
+│ n = 50
+│ cities = [ 100*rand(2) for _ in 1:n];
+│ tour, cost = get_optimal_tour(cities; verbose = true)
+│ plot_cities(cities[tour])
+│ """
+
+
 
 makedocs(;
     modules=[TravelingSalesmanExact],
