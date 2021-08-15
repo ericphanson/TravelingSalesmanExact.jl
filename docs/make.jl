@@ -1,7 +1,8 @@
 using Documenter, TravelingSalesmanExact
 
-using Scratch, Conda, UUIDs # asciinema imports
-
+# asciinema install and cache invalidation
+using Scratch, Conda, UUIDs
+using TOML, Git
 env = :asciinema
 Conda.pip_interop(true, env)
 Conda.pip("install", "asciinema", env)
@@ -10,12 +11,6 @@ asciinema = joinpath(Conda.python_dir(env), "asciinema")
 # We store casts in a scratch directory, so we don't
 # need to rebuild them unless the code changes.
 const ASCIINEMA_CAST_DIR = get_scratch!(TravelingSalesmanExact, "gifs")
-
-function clear_gifs!()
-    rm(ASCIINEMA_CAST_DIR; recursive=true)
-    mkdir(ASCIINEMA_CAST_DIR)
-    return nothing
-end
 
 # We create an asciinema config
 # so that we can start Julia in quiet mode
@@ -40,7 +35,6 @@ function record(commands, path)
     endswith(commands, '\n') || write(io, '\n')
     write(io, 0x4) # write ctrl-d to exit the process and end the cast
     seekstart(io)
-
     env_dict = Conda._get_conda_env(env)
     env_dict["ASCIINEMA_CONFIG_HOME"] = ASCIINEMA_CONFIG_DIR
     env_dict["JULIA_PROJECT"] = Base.active_project()
@@ -49,9 +43,23 @@ function record(commands, path)
     return nothing
 end
 
+function get_version()
+    return VersionNumber(TOML.parsefile(joinpath(dirname(@__DIR__), "Project.toml"))["version"])
+end
+
 macro gif_str(commands)
+    # When should a gif be invalidated?
+    key = if success(`$(git()) rev-parse --git-dir`)
+        # in a git repo:
+        # if the source code changes, if the commands change, or if the Project.toml changes
+    hash((readchomp(`$(git()) rev-parse HEAD:src`), readchomp(`$(git()) rev-parse HEAD:docs/Project.toml`), commands))
+    else
+        # not in a git repo: when the package version number changes
+        hash((get_version(), commands))
+    end
+
     # We use a hash of the commands to name the cast
-    filename = string(uuid5(UUID("faedbbc1-c8d1-4dfe-aa46-8b80407bf145"), commands), ".cast")
+    filename = string(key, ".cast")
 
     path = joinpath(ASCIINEMA_CAST_DIR, filename)
     isfile(path) || record(commands, path)
@@ -64,13 +72,13 @@ end
 
 
 gif"""
-│ using TravelingSalesmanExact, GLPK
-│ set_default_optimizer!(GLPK.Optimizer)
-│ n = 50
-│ cities = [ 100*rand(2) for _ in 1:n];
-│ tour, cost = get_optimal_tour(cities; verbose = true)
-│ plot_cities(cities[tour])
-│ """
+using TravelingSalesmanExact, GLPK
+set_default_optimizer!(GLPK.Optimizer)
+n = 50
+cities = [ 100*rand(2) for _ in 1:n];
+tour, cost = get_optimal_tour(cities; verbose = true)
+plot_cities(cities[tour])
+"""
 
 
 
