@@ -41,7 +41,7 @@ function record(commands, path)
     write(io, commands)
     # Make sure we press enter after all the commands
     endswith(commands, '\n') || write(io, '\n')
-    write(io, 0x4) # write ctrl-d to exit the process and end the cast
+    println(io, "exit(0)") # exit the process and end the cast
     seekstart(io)
     env_dict = Conda._get_conda_env(env)
     env_dict["ASCIINEMA_CONFIG_HOME"] = ASCIINEMA_CONFIG_DIR
@@ -75,6 +75,7 @@ distance = TravelingSalesmanExact.ATT
 tour, cost = get_optimal_tour(cities; distance, verbose=true, slow=true)
 """
 
+@info "Starting `makedocs`..."
 
 makedocs(;
     modules=[TravelingSalesmanExact],
