@@ -292,10 +292,12 @@ function _get_optimal_tour(
     lazy_constraints,
     cities = nothing,
     slow = false,
+    silent_optimizer=true,
 )
     has_cities = !isnothing(cities)
 
     model = Model(optimizer)
+    silent_optimizer && set_silent(model)
     tour_matrix = build_tour_matrix(model, cost, symmetric)
 
     if has_cities && verbose

@@ -12,9 +12,9 @@ using Main: @gif_str
 
 ```@example 1
 gif"""
-using TravelingSalesmanExact, GLPK, StableRNGs
+using TravelingSalesmanExact, HiGHS, StableRNGs
 rng = StableRNG(12);
-set_default_optimizer!(GLPK.Optimizer)
+set_default_optimizer!(HiGHS.Optimizer)
 n = 10
 cities = [ 100*rand(rng, 2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities; verbose=true, slow=true)
