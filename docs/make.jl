@@ -11,6 +11,12 @@ asciinema = joinpath(Conda.python_dir(env), "asciinema")
 # need to rebuild them unless the code changes.
 const ASCIINEMA_CAST_DIR = get_scratch!(TravelingSalesmanExact, "gifs")
 
+function clear_gifs!()
+    rm(ASCIINEMA_CAST_DIR; recursive=true)
+    mkdir(ASCIINEMA_CAST_DIR)
+    return nothing
+end
+
 # We create an asciinema config
 # so that we can start Julia in quiet mode
 # and clear the screen before starting.
@@ -34,8 +40,11 @@ function record(commands, path)
     endswith(commands, '\n') || write(io, '\n')
     write(io, 0x4) # write ctrl-d to exit the process and end the cast
     seekstart(io)
-    run(pipeline(addenv(`$asciinema rec $path --overwrite`, "ASCIINEMA_CONFIG_HOME" => ASCIINEMA_CONFIG_DIR,
-    "JULIA_PROJECT" => Base.active_project()); stdin=io))
+
+    env_dict = Conda._get_conda_env(env)
+    env_dict["ASCIINEMA_CONFIG_HOME"] = ASCIINEMA_CONFIG_DIR
+    env_dict["JULIA_PROJECT"] = Base.active_project()
+    run(pipeline(addenv(`$asciinema rec $path --overwrite`, env_dict); stdin=io))
     return nothing
 end
 
