@@ -23,6 +23,7 @@ end
 const default_optimizer = Ref{Any}(nothing)
 
 clear_screen() = try run(`clear -x`) catch end
+const SLOW_SLEEP = Ref(0.75)
 
 """
     set_default_optimizer(O)
@@ -334,7 +335,7 @@ function _get_optimal_tour(
 
             if has_cities
                 if slow
-                    sleep(max(0, .5-t))
+                    sleep(max(0, SLOW_SLEEP[] - t))
                     clear_screen()
                 end
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
@@ -355,6 +356,7 @@ function _get_optimal_tour(
     length(cycles) == 1 || error("Something went wrong; did not elimate all subtours. Please file an issue.")
 
     if verbose
+        slow && sleep(SLOW_SLEEP[])
         obj = objective_value(model)
         obj_string = isinteger(obj) ? @sprintf("%i", obj) : @sprintf("%.2f", obj)
         @info "Optimization finished; adaptively disallowed $(tot_cycles[]) cycles."
