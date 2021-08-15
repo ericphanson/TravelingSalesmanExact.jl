@@ -21,8 +21,7 @@ asciinema = joinpath(Conda.python_dir(env), "asciinema")
 const ASCIINEMA_CAST_DIR = get_scratch!(TravelingSalesmanExact, "gifs")
 
 # We create an asciinema config
-# so that we can start Julia in quiet mode
-# and clear the screen before starting.
+# so that we can clear the screen before starting.
 # Otherwise, the contents that we wish to type
 # into the Julia session are printed first,
 # before the Julia session starts.
@@ -31,7 +30,7 @@ open(joinpath(ASCIINEMA_CONFIG_DIR, "config"), write=true) do io
     println(io, """
     [record]
 
-    command = clear -x && julia --startup-file=no -q
+    command = clear -x && julia --startup-file=no
 
     """)
 end
@@ -95,7 +94,7 @@ index_path = joinpath(@__DIR__, "build", "index.html")
 index = read(index_path, String)
 requires_script = match(requires_regex, index).match # get the right version numbers for requires.js
 index = replace(index, asciinema_script => "")
-index = replace(index, req_script => asciinema_script*req_script)
+index = replace(index, requires_script => asciinema_script*requires_script)
 write(index_path, index)
 
 
