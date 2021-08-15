@@ -7,8 +7,7 @@ Conda.pip("install", "asciinema", env)
 
 asciinema = joinpath(Conda.python_dir(env), "asciinema")
 
-cast_dir = joinpath(@__DIR__, "src", "assets", "gifs")
-ispath(cast_dir) || mkpath(cast_dir)
+cast_dir = mktempdir()
 
 function record(commands, name)
     config_dir = mktempdir()
@@ -59,7 +58,20 @@ makedocs(;
     ],
 )
 
+# Copy the gifs into the build directory
 cp(cast_dir, joinpath(@__DIR__, "build", "assets", "gifs"); force=true)
+
+# Very hacky fix to load the asciinema JS before Documenter's require.js
+# <https://github.com/JuliaDocs/Documenter.jl/issues/1433>
+# Note: we strict compat-bound Documenter in case the version of requires changes in patch releases (which would be totally valid)
+req_script = """<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script>"""
+asciinema_script = """<script src="https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/2.6.1/asciinema-player.min.js"></script>"""
+index_path = joinpath(@__DIR__, "build", "index.html")
+index = read(index_path, String)
+index = replace(index, asciinema_script => "")
+index = replace(index, req_script => asciinema_script*req_script)
+write(index_path, index)
+
 
 deploydocs(;
     repo="github.com/ericphanson/TravelingSalesmanExact.jl",

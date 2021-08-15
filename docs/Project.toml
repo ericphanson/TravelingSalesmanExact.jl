@@ -5,4 +5,4 @@ GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
 TravelingSalesmanExact = "737fac7d-4440-55ef-927e-002196e95561"
 
 [compat]
-Documenter = "0.27"
+Documenter = "=0.27.5"

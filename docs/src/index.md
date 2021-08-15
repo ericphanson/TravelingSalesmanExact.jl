@@ -6,8 +6,12 @@
 ## Example
 
 
-```@example
-gif = Main.gif"""
+```@setup 1
+using Main: @gif_str
+```
+
+```@example 1
+gif"""
 using TravelingSalesmanExact, GLPK
 set_default_optimizer!(GLPK.Optimizer)
 n = 50
