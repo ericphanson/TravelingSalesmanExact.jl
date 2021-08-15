@@ -157,11 +157,16 @@ end
     get_optimal_tour(
         cities::AbstractVector,
         optimizer = get_default_optimizer();
-        verbose = false,
         distance = euclidean_distance,
-        symmetric = true,
-        lazy_constraints = false,
+        kwargs...
     )
+
+    get_optimal_tour(
+        cost::AbstractMatrix
+        optimizer = get_default_optimizer();
+        kwargs...
+    )
+
 
 Solves the travelling salesman problem for a list of cities using JuMP by
 formulating a MILP using the Dantzig-Fulkerson-Johnson formulation and
@@ -173,57 +178,36 @@ The second argument is mandatory if a default optimizer has not been set (via
 
     get_optimal_tour(cities, GLPK.Optimizer)
 
-There are three boolean optional keyword arguments:
+There are five boolean optional keyword arguments:
 
-* `verbose` indicates whether or not to print lots of information as the algorithm proceeds.
-* `symmetric` indicates whether or not the distance metric used is symmetric (the default is to assume that it is)
+* `verbose` (default: false) indicates whether or not to print lots of information as the algorithm proceeds.
+* `symmetric` indicates whether or not the cost matrix is symmetric. By default, `issymmetric` is used to check.
 * `lazy_constraints` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)).
+* `slow` artifically sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
+* `silent_optimizer` calls `JuMP.set_silent` on the resulting model to prevent the optimizer from emitting logging information.
 
 """
+get_optimal_tour
+
 function get_optimal_tour(
     cities::AbstractVector,
     optimizer = get_default_optimizer();
     verbose = false,
     distance = euclidean_distance,
-    symmetric = true,
+    symmetric = nothing,
     lazy_constraints = false,
     slow=false,
+    silent_optimizer=true,
 )
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities, slow)
+    if symmetric === nothing
+        symmetric = issymmetric(cost)
+    end
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities, slow, silent_optimizer)
 end
 
-"""
-    get_optimal_tour(
-        cost::AbstractMatrix,
-        optimizer = get_default_optimizer();
-        verbose::Bool = false,
-        symmetric::Bool = issymmetric(cost),
-        lazy_constraints = false,
-        slow::Bool = false
-    )
-
-Solves the travelling salesman problem for a square cost matrix using JuMP by
-formulating a MILP using the Dantzig-Fulkerson-Johnson formulation and
-adaptively adding constraints to disallow non-maximal cycles. Returns an optimal
-tour and the cost of the optimal path.
-
-The second argument is mandatory if a default optimizer has not been set (via
-`set_default_optimizer`). This argument should be a function which creates an
-optimizer, e.g.
-    
-        get_optimal_tour(cities, GLPK.Optimizer)
-
-There are three boolean optional keyword arguments:
-
-* `verbose` indicates whether or not to print lots of information as the algorithm proceeds.
-* `symmetric` indicates whether or not the `cost` matrix is symmetric (the default is to check via `issymmetric`)
-* `lazy_constraints` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)). Defaults to `false`.
-* `slow` artifically sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
-
-"""
 function get_optimal_tour(
     cost::AbstractMatrix,
     optimizer = get_default_optimizer();
@@ -231,10 +215,11 @@ function get_optimal_tour(
     symmetric = issymmetric(cost),
     lazy_constraints = false,
     slow = false,
+    silent_optimizer=true
 )
     size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, slow)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, slow, silent_optimizer)
 end
 
 
