@@ -75,4 +75,5 @@ write(index_path, index)
 
 deploydocs(;
     repo="github.com/ericphanson/TravelingSalesmanExact.jl",
+    push_preview=true,
 )
