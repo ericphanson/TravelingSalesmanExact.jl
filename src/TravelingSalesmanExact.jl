@@ -54,7 +54,7 @@ Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in
 function plot_cities(cities)
     n = length(cities)
     inc(a) = a == n ? one(a) : a + 1
-    return lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n])
+    return lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n]; height=22)
 end
 
 """
