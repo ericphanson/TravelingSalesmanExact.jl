@@ -44,6 +44,7 @@ function record(commands, path)
     env_dict = Conda._get_conda_env(env)
     env_dict["ASCIINEMA_CONFIG_HOME"] = ASCIINEMA_CONFIG_DIR
     env_dict["JULIA_PROJECT"] = Base.active_project()
+    env_dict["TERM"] = "xterm-256color"
     run(pipeline(addenv(`$asciinema rec $path --overwrite`, env_dict); stdin=io))
     return nothing
 end
