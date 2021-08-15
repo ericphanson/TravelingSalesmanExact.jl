@@ -164,6 +164,7 @@ end
         cities;
         distance = TravelingSalesmanExact.ATT,
         verbose = true,
+        slow = true,
     )
     @test sym_cost ≈ 10628
 
