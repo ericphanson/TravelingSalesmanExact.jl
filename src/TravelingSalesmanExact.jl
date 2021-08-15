@@ -22,6 +22,8 @@ end
 
 const default_optimizer = Ref{Any}(nothing)
 
+clear_screen() = try run(`clear -x`) catch end
+
 """
     set_default_optimizer(O)
 
@@ -185,11 +187,12 @@ function get_optimal_tour(
     distance = euclidean_distance,
     symmetric = true,
     lazy_constraints = false,
+    slow=false,
 )
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
     cost = [distance(cities[i], cities[j]) for i = 1:N, j = 1:N]
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities, slow)
 end
 
 """
@@ -199,6 +202,7 @@ end
         verbose::Bool = false,
         symmetric::Bool = issymmetric(cost),
         lazy::Bool = true,
+        slow::Bool = false
     )
 
 Solves the travelling salesman problem for a square cost matrix using JuMP by
@@ -217,6 +221,7 @@ There are three boolean optional keyword arguments:
 * `verbose` indicates whether or not to print lots of information as the algorithm proceeds.
 * `symmetric` indicates whether or not the `cost` matrix is symmetric (the default is to check via `issymmetric`)
 * `lazy` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)).
+* `slow` artifically sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
 
 """
 function get_optimal_tour(
@@ -225,10 +230,11 @@ function get_optimal_tour(
     verbose = false,
     symmetric = issymmetric(cost),
     lazy_constraints = false,
+    slow = false,
 )
     size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, slow)
 end
 
 
@@ -285,6 +291,7 @@ function _get_optimal_tour(
     verbose,
     lazy_constraints,
     cities = nothing,
+    slow = false,
 )
     has_cities = !isnothing(cities)
 
@@ -292,6 +299,7 @@ function _get_optimal_tour(
     tour_matrix = build_tour_matrix(model, cost, symmetric)
 
     if has_cities && verbose
+        slow && clear_screen()
         @info "Starting optimization." plot_cities(cities)
     elseif verbose
         @info "Starting optimization."
@@ -325,7 +333,10 @@ function _get_optimal_tour(
             end
 
             if has_cities
-                success(`clear -x`)
+                if slow
+                    sleep(max(0, .5-t))
+                    clear_screen()
+                end
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
                     cities,
                     value.(tour_matrix),
