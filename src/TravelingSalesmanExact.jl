@@ -325,6 +325,7 @@ function _get_optimal_tour(
             end
 
             if has_cities
+                success(`clear -x`)
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
                     cities,
                     value.(tour_matrix),

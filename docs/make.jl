@@ -58,7 +58,6 @@ macro gif_str(commands)
         hash((get_version(), commands))
     end
 
-    # We use a hash of the commands to name the cast
     filename = string(key, ".cast")
 
     path = joinpath(ASCIINEMA_CAST_DIR, filename)
