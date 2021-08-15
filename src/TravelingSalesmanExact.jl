@@ -51,9 +51,8 @@ Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in
 `cities`, in order (including going from the last city back to the first).
 """
 function plot_cities(cities)
-    n = length(cities)
-    inc(a) = a == n ? one(a) : a + 1
-    return lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n]; height=18)
+    loop = [cities[mod1(j+1, end)] for j = 0:length(cities)]
+    return lineplot(first.(loop), last.(loop); height=18)
 end
 
 """
@@ -219,7 +218,7 @@ function get_optimal_tour(
 )
     size(cost, 1) == size(cost, 2) || throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) && throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
-    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, slow, silent_optimizer)
+    return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, nothing, slow, silent_optimizer)
 end
 
 
@@ -275,9 +274,9 @@ function _get_optimal_tour(
     symmetric,
     verbose,
     lazy_constraints,
-    cities = nothing,
-    slow = false,
-    silent_optimizer=true,
+    cities,
+    slow,
+    silent_optimizer,
 )
     has_cities = !isnothing(cities)
 
