@@ -201,7 +201,7 @@ end
         optimizer = get_default_optimizer();
         verbose::Bool = false,
         symmetric::Bool = issymmetric(cost),
-        lazy::Bool = true,
+        lazy_constraints = false,
         slow::Bool = false
     )
 
@@ -220,7 +220,7 @@ There are three boolean optional keyword arguments:
 
 * `verbose` indicates whether or not to print lots of information as the algorithm proceeds.
 * `symmetric` indicates whether or not the `cost` matrix is symmetric (the default is to check via `issymmetric`)
-* `lazy` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)).
+* `lazy_constraints` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)). Defaults to `false`.
 * `slow` artifically sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
 
 """
@@ -332,11 +332,7 @@ function _get_optimal_tour(
             end
 
             if has_cities
-                if slow
-                    s = max(0, SLOW_SLEEP[] - t)
-                    @info "sleeping for $s"
-                    sleep(s)
-                end
+                slow && sleep(max(0, SLOW_SLEEP[] - t))
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
                     cities,
                     value.(tour_matrix),
