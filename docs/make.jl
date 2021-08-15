@@ -1,8 +1,16 @@
 using Documenter, TravelingSalesmanExact
 
 # asciinema install and cache invalidation
-using Scratch, Conda, UUIDs
-using TOML, Git
+using Scratch, Conda, Tar
+
+# Returns the tree hash of a directory using Tar.jl
+function tree_hash(dir)
+    io = IOBuffer()
+    Tar.create(dir, io)
+    seekstart(io)
+    Tar.tree_hash(io)
+end
+
 env = :asciinema
 Conda.pip_interop(true, env)
 Conda.pip("install", "asciinema", env)
@@ -43,20 +51,10 @@ function record(commands, path)
     return nothing
 end
 
-function get_version()
-    return VersionNumber(TOML.parsefile(joinpath(dirname(@__DIR__), "Project.toml"))["version"])
-end
-
 macro gif_str(commands)
     # When should a gif be invalidated?
-    key = if success(`$(git()) rev-parse --git-dir`)
-        # in a git repo:
-        # if the source code changes, if the commands change, or if the Project.toml changes
-    hash((readchomp(`$(git()) rev-parse HEAD:src`), readchomp(`$(git()) rev-parse HEAD:docs/Project.toml`), commands))
-    else
-        # not in a git repo: when the package version number changes
-        hash((get_version(), commands))
-    end
+    # If the source code changes, if the docs Project.toml changes, or if the commands change.
+    key = hash((tree_hash(joinpath(@__DIR__, "..", "src")), read(joinpath(@__DIR__, "Project.toml")), commands))
 
     filename = string(key, ".cast")
 
@@ -66,7 +64,7 @@ macro gif_str(commands)
 
     # We start at 0.25 seconds so that we can skip the initial 
     # printing of commands and some of the Julia startup time.
-    return HTML("""<asciinema-player src="$relative_path" idle-time-limit="2" autoplay="true" start-at="0.25"></asciinema-player >""")
+    return HTML("""<asciinema-player src="$relative_path" idle-time-limit="1" autoplay="true" start-at="0.25"></asciinema-player >""")
 end
 
 

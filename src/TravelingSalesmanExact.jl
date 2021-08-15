@@ -22,8 +22,7 @@ end
 
 const default_optimizer = Ref{Any}(nothing)
 
-clear_screen() = nothing
-const SLOW_SLEEP = Ref(0.75)
+const SLOW_SLEEP = Ref(1.5)
 
 """
     set_default_optimizer(O)
@@ -54,7 +53,7 @@ Uses `UnicodePlots`'s `lineplot` to make a plot of the tour of the cities in
 function plot_cities(cities)
     n = length(cities)
     inc(a) = a == n ? one(a) : a + 1
-    return lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n]; height=21)
+    return lineplot([cities[inc(j)][1] for j = 0:n], [cities[inc(j)][2] for j = 0:n]; height=18)
 end
 
 """
@@ -300,7 +299,6 @@ function _get_optimal_tour(
     tour_matrix = build_tour_matrix(model, cost, symmetric)
 
     if has_cities && verbose
-        slow && clear_screen()
         @info "Starting optimization." plot_cities(cities)
     elseif verbose
         @info "Starting optimization."
@@ -335,8 +333,9 @@ function _get_optimal_tour(
 
             if has_cities
                 if slow
-                    sleep(max(0, SLOW_SLEEP[] - t))
-                    clear_screen()
+                    s = max(0, SLOW_SLEEP[] - t)
+                    @info "sleeping for $s"
+                    sleep(s)
                 end
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
                     cities,
