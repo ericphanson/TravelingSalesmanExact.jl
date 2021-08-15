@@ -62,21 +62,12 @@ macro gif_str(commands)
     isfile(path) || record(commands, path)
     relative_path = "./assets/gifs/$filename"
 
-    # We start at 0.25 seconds so that we can skip the initial 
+    # We start at 0.3 seconds so that we can skip the initial 
     # printing of commands and some of the Julia startup time.
-    return HTML("""<asciinema-player src="$relative_path" idle-time-limit="1" autoplay="true" start-at="0.25"></asciinema-player >""")
+    return HTML("""<asciinema-player src="$relative_path" idle-time-limit="1" autoplay="true" start-at="0.3"></asciinema-player >""")
 end
 
-gif"""
-using TravelingSalesmanExact, GLPK
-set_default_optimizer!(GLPK.Optimizer)
-cities = TravelingSalesmanExact.get_ATT48_cities()
-distance = TravelingSalesmanExact.ATT
-tour, cost = get_optimal_tour(cities; distance, verbose=true, slow=true)
-"""
-
-@info "Starting `makedocs`..."
-
+asciinema_version = "2.6.1"
 makedocs(;
     modules=[TravelingSalesmanExact],
     authors="Eric P. Hanson",
@@ -85,8 +76,8 @@ makedocs(;
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://ericphanson.github.io/TravelingSalesmanExact.jl",
-        assets=[asset("https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/2.6.1/asciinema-player.min.js"),
-                asset("https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/2.6.1/asciinema-player.min.css")],
+        assets=[asset("https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/$(asciinema_version)/asciinema-player.min.js"),
+                asset("https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/$(asciinema_version)/asciinema-player.min.css")],
     ),
     pages=[
         "Home" => "index.md",
@@ -98,11 +89,11 @@ cp(ASCIINEMA_CAST_DIR, joinpath(@__DIR__, "build", "assets", "gifs"); force=true
 
 # Very hacky fix to load the asciinema JS before Documenter's require.js
 # <https://github.com/JuliaDocs/Documenter.jl/issues/1433>
-# Note: we strict compat-bound Documenter in case the version of requires changes in patch releases (which would be totally valid)
-req_script = """<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script>"""
-asciinema_script = """<script src="https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/2.6.1/asciinema-player.min.js"></script>"""
+requires_regex = r"""<script src="https://cdnjs\.cloudflare\.com/ajax/libs/require\.js/[0-9]+\.[0-9]+\.[0-9]+/require\.min\.js" data-main="assets/documenter\.js"></script>"""
+asciinema_script = """<script src="https://cdnjs.cloudflare.com/ajax/libs/asciinema-player/$(asciinema_version)/asciinema-player.min.js"></script>"""
 index_path = joinpath(@__DIR__, "build", "index.html")
 index = read(index_path, String)
+requires_script = match(requires_regex, index).match # get the right version numbers for requires.js
 index = replace(index, asciinema_script => "")
 index = replace(index, req_script => asciinema_script*req_script)
 write(index_path, index)
