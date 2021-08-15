@@ -1,42 +1,50 @@
 using Documenter, TravelingSalesmanExact
 
-using Conda, UUIDs
+using Scratch, Conda, UUIDs # asciinema imports
+
 env = :asciinema
 Conda.pip_interop(true, env)
 Conda.pip("install", "asciinema", env)
-
 asciinema = joinpath(Conda.python_dir(env), "asciinema")
 
-cast_dir = mktempdir()
+# We store casts in a scratch directory, so we don't
+# need to rebuild them unless the code changes.
+const ASCIINEMA_CAST_DIR = get_scratch!(TravelingSalesmanExact, "gifs")
+
+
+# We create an asciinema config
+# so that we can start Julia in quiet mode
+# and clear the screen before starting.
+# Otherwise, the contents that we wish to type
+# into the Julia session are printed first,
+# before the Julia session starts.
+const ASCIINEMA_CONFIG_DIR = get_scratch!(TravelingSalesmanExact, "asciinema_config")
+open(joinpath(ASCIINEMA_CONFIG_DIR, "config"), write=true) do io
+    println(io, """
+    [record]
+
+    command = clear -x && julia --startup-file=no -q
+
+    """)
+end
 
 function record(commands, name)
-    config_dir = mktempdir()
-    config_file = joinpath(config_dir, "config")
-    open(config_file, write=true) do io
-        println(io, """
-        [record]
-
-        command = clear -x && julia --startup-file=no -q
-
-        """)
-
-    end
-    path = string(name, ".cast")
-    isfile(path) && (@info "Rming"; rm(path))
-    @info "Generating $name" commands
     io = IOBuffer()
     write(io, commands)
+    # Make sure we press enter after all the commands
     endswith(commands, '\n') || write(io, '\n')
     write(io, 0x4) # write ctrl-d to exit the process and end the cast
     seekstart(io)
-    run(pipeline(addenv(`$asciinema rec $path --overwrite`, "ASCIINEMA_CONFIG_HOME" => config_dir,
+    run(pipeline(addenv(`$asciinema rec $(name).cast --overwrite`, "ASCIINEMA_CONFIG_HOME" => ASCIINEMA_CONFIG_DIR,
     "JULIA_PROJECT" => Base.active_project()); stdin=io))
     return nothing
 end
 
 macro gif_str(commands)
+    # We use a hash of the commands to name the cast
     name  = string(uuid5(UUID("faedbbc1-c8d1-4dfe-aa46-8b80407bf145"), commands))
-    path = joinpath(cast_dir, name)
+
+    path = joinpath(ASCIINEMA_CAST_DIR, name)
     isfile(path) || record(commands, path)
     relative_path = "./assets/gifs/$(name).cast"
     return HTML("""<asciinema-player src="$relative_path" idle-time-limit="2" autoplay="true" start-at="0.25"></asciinema-player >""")
@@ -59,7 +67,7 @@ makedocs(;
 )
 
 # Copy the gifs into the build directory
-cp(cast_dir, joinpath(@__DIR__, "build", "assets", "gifs"); force=true)
+cp(ASCIINEMA_CAST_DIR, joinpath(@__DIR__, "build", "assets", "gifs"); force=true)
 
 # Very hacky fix to load the asciinema JS before Documenter's require.js
 # <https://github.com/JuliaDocs/Documenter.jl/issues/1433>
