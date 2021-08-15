@@ -19,19 +19,23 @@ on:
       - 'Project.toml'
 jobs:
   build:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@latest
         with:
-          version: '1.0'
+          version: '1.6'
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));  Pkg.instantiate()'
       - uses: actions/cache@v2
         with:
-          path: ~/.julia/artifacts
+          path: |
+            ~/.julia/artifacts
+            ~/.julia/conda
           key: ${{ runner.os }}-docs-artifacts-${{ hashFiles('**/Project.toml') }}
           restore-keys: ${{ runner.os }}-docs-artifacts
       - uses: julia-actions/julia-docdeploy@releases/v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHON: ""

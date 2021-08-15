@@ -9,11 +9,9 @@ function test_valid_tour(tour, L)
 end
 
 function tour_cost(tour, cost::AbstractMatrix)
-    n = length(tour)
-    inc(a) = a == n ? one(a) : a + 1
     s = zero(eltype(cost))
     for (index, city) in enumerate(tour)
-        nextcity = tour[inc(index)]
+        nextcity = tour[mod1(index+1, end)]
         s += cost[city, nextcity]
     end
     return s
@@ -166,6 +164,7 @@ end
         cities;
         distance = TravelingSalesmanExact.ATT,
         verbose = true,
+        slow = true,
     )
     @test sym_cost ≈ 10628
 
