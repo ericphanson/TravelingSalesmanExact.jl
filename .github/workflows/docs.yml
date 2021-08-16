@@ -27,15 +27,12 @@ jobs:
         with:
           version: '1.6'
       - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));  Pkg.instantiate()'
+        run: julia --project=docs/ -e 'using Pkg; Pkg.develop([PackageSpec(path=pwd()), PackageSpec(url="https://github.com/ericphanson/Asciicast.jl")]);  Pkg.instantiate()'
       - uses: actions/cache@v2
         with:
-          path: |
-            ~/.julia/artifacts
-            ~/.julia/conda
+          path: ~/.julia/artifacts
           key: ${{ runner.os }}-docs-artifacts-${{ hashFiles('**/Project.toml') }}
           restore-keys: ${{ runner.os }}-docs-artifacts
       - uses: julia-actions/julia-docdeploy@releases/v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYTHON: ""
