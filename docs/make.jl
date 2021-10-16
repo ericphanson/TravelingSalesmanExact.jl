@@ -16,6 +16,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
     ],
+    strict=:doctest,
 )
 
 # Very hacky fix to load the asciinema JS before Documenter's require.js

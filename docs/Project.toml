@@ -6,5 +6,5 @@ TravelingSalesmanExact = "737fac7d-4440-55ef-927e-002196e95561"
 
 [compat]
 Asciicast = "0.1"
-Documenter = "0.27.5"
+Documenter = "0.27.8"
 GLPK = "0.14"

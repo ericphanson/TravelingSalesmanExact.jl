@@ -5,7 +5,7 @@
 
 ## Example
 
-```@gif
+```@cast
 using TravelingSalesmanExact, GLPK
 set_default_optimizer!(GLPK.Optimizer)
 cities = TravelingSalesmanExact.get_ATT48_cities();
