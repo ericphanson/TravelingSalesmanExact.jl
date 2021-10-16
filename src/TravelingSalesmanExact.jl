@@ -185,6 +185,35 @@ There are five boolean optional keyword arguments:
 * `slow` artifically sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
 * `silent_optimizer` calls `JuMP.set_silent` on the resulting model to prevent the optimizer from emitting logging information.
 
+## Example
+
+```jldoctest
+julia> using TravelingSalesmanExact, GLPK, LinearAlgebra
+
+julia> set_default_optimizer!(GLPK.Optimizer)
+GLPK.Optimizer
+
+julia> cities = [[0, 0], [0, 1], [1, 1], [1, 0]]
+4-element Vector{Vector{Int64}}:
+ [0, 0]
+ [0, 1]
+ [1, 1]
+ [1, 0]
+
+julia> tour, cost = get_optimal_tour(cities)
+([4, 1, 2, 3], 4.0)
+
+julia> cost_matrix = [norm(cities[i] - cities[j]) for i = 1:4, j = 1:4]
+4×4 Matrix{Float64}:
+ 0.0      1.0      1.41421  1.0
+ 1.0      0.0      1.0      1.41421
+ 1.41421  1.0      0.0      1.0
+ 1.0      1.41421  1.0      0.0
+
+julia> tour, cost = get_optimal_tour(cost_matrix)
+([4, 1, 2, 3], 4.0)
+
+```
 """
 get_optimal_tour
 
@@ -426,10 +455,35 @@ A simple helper function to get the problem data for the ATT48 TSPLIB problem.
 
 # Example
 
-```julia
-using TravelingSalesmanExact, GLPK
-cities = TravelingSalesmanExact.get_ATT48_cities()
-get_optimal_tour(cities, GLPK.Optimizer, distance = TravelingSalesmanExact.ATT)
+```jldoctest
+julia> using TravelingSalesmanExact, GLPK
+
+julia> cities = TravelingSalesmanExact.get_ATT48_cities()
+48-element Vector{Vector{Int64}}:
+ [6734, 1453]
+ [2233, 10]
+ [5530, 1424]
+ [401, 841]
+ [3082, 1644]
+ [7608, 4458]
+ [7573, 3716]
+ [7265, 1268]
+ [6898, 1885]
+ [1112, 2049]
+ ⋮
+ [6271, 2135]
+ [4985, 140]
+ [1916, 1569]
+ [7280, 4899]
+ [7509, 3239]
+ [10, 2676]
+ [6807, 2993]
+ [5185, 3258]
+ [3023, 1942]
+
+julia> get_optimal_tour(cities, GLPK.Optimizer, distance = TravelingSalesmanExact.ATT)
+([5, 42, 24, 10, 45, 35, 4, 26, 2, 29  …  30, 36, 46, 33, 20, 47, 21, 32, 39, 48], 10628.0)
+
 ```
 """
 function get_ATT48_cities()
