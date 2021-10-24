@@ -137,7 +137,7 @@ euclidean_distance(city1, city2) = sqrt((city1[1] - city2[1])^2 + (city1[2] - ci
     ATT(city1, city2)
 
 The `ATT` distance measure as specified in TSPLIB:
-<https://www.iwr.uni-heidelberg.de/groups/comopt/software/TSPLIB95/tsp95.pdf>.
+<http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf>.
 """
 function ATT(city1, city2)
     xd = city1[1] - city2[1]
