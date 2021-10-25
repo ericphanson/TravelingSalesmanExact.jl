@@ -1,5 +1,6 @@
 module TravelingSalesmanExact
 
+using Base: task_result
 using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
 import MathOptInterface
 const MOI = MathOptInterface
@@ -433,17 +434,27 @@ just to be able to test the optimization; may break on other files. Returns a
 list of cities for use in `get_optimal_tour`.
 """
 function simple_parse_tsp(filename; verbose = true)
-    cities = Vector{Int}[]
+    cities = Vector{Float64}[]
+    in_meta = true
+    in_node_coord_section = false
     for line in readlines(filename)
         line = strip(line)
-        if startswith(line, '1':'9')
-            nums = split(line, " ")
-            @assert length(nums) == 3
-            x = parse(Int, nums[2])
-            y = parse(Int, nums[3])
-            push!(cities, [x, y])
-        elseif verbose
+        line == "EOF" && break
+
+        if in_meta && verbose 
             println(line)
+        end
+        if in_node_coord_section
+            nums = split(line)
+            @assert length(nums) == 3
+            x = parse(Float64, nums[2])
+            y = parse(Float64, nums[3])
+            push!(cities, [x, y])
+        end
+        # change section type
+        if line == "NODE_COORD_SECTION"
+            in_meta = false
+            in_node_coord_section = true
         end
     end
     return cities
