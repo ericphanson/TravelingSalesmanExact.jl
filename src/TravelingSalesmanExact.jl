@@ -435,6 +435,7 @@ list of cities for use in `get_optimal_tour`.
 function simple_parse_tsp(filename; verbose = true)
     cities = Vector{Int}[]
     for line in readlines(filename)
+        line = strip(line)
         if startswith(line, '1':'9')
             nums = split(line, " ")
             @assert length(nums) == 3
