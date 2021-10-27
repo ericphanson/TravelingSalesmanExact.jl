@@ -434,16 +434,15 @@ list of cities for use in `get_optimal_tour`.
 """
 function simple_parse_tsp(filename; verbose = true)
     cities = Vector{Float64}[]
-    in_meta = true
-    in_node_coord_section = false
+    section = :Meta
     for line in readlines(filename)
         line = strip(line)
         line == "EOF" && break
 
-        if in_meta && verbose 
+        if section == :Meta && verbose 
             println(line)
         end
-        if in_node_coord_section
+        if section == :NODE_COORD_SECTION
             nums = split(line)
             @assert length(nums) == 3
             x = parse(Float64, nums[2])
@@ -452,8 +451,7 @@ function simple_parse_tsp(filename; verbose = true)
         end
         # change section type
         if line == "NODE_COORD_SECTION"
-            in_meta = false
-            in_node_coord_section = true
+            section = :NODE_COORD_SECTION
         end
     end
     return cities
