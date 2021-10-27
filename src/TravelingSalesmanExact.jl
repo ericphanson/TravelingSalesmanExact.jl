@@ -1,6 +1,5 @@
 module TravelingSalesmanExact
 
-using Base: task_result
 using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
 import MathOptInterface
 const MOI = MathOptInterface
