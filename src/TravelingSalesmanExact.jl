@@ -433,16 +433,25 @@ just to be able to test the optimization; may break on other files. Returns a
 list of cities for use in `get_optimal_tour`.
 """
 function simple_parse_tsp(filename; verbose = true)
-    cities = Vector{Int}[]
+    cities = Vector{Float64}[]
+    section = :Meta
     for line in readlines(filename)
-        if startswith(line, '1':'9')
-            nums = split(line, " ")
-            @assert length(nums) == 3
-            x = parse(Int, nums[2])
-            y = parse(Int, nums[3])
-            push!(cities, [x, y])
-        elseif verbose
+        line = strip(line)
+        line == "EOF" && break
+
+        if section == :Meta && verbose 
             println(line)
+        end
+        if section == :NODE_COORD_SECTION
+            nums = split(line)
+            @assert length(nums) == 3
+            x = parse(Float64, nums[2])
+            y = parse(Float64, nums[3])
+            push!(cities, [x, y])
+        end
+        # change section type
+        if line == "NODE_COORD_SECTION"
+            section = :NODE_COORD_SECTION
         end
     end
     return cities
@@ -459,27 +468,27 @@ A simple helper function to get the problem data for the ATT48 TSPLIB problem.
 julia> using TravelingSalesmanExact, GLPK
 
 julia> cities = TravelingSalesmanExact.get_ATT48_cities()
-48-element Vector{Vector{Int64}}:
- [6734, 1453]
- [2233, 10]
- [5530, 1424]
- [401, 841]
- [3082, 1644]
- [7608, 4458]
- [7573, 3716]
- [7265, 1268]
- [6898, 1885]
- [1112, 2049]
+48-element Vector{Vector{Float64}}:
+ [6734.0, 1453.0]
+ [2233.0, 10.0]
+ [5530.0, 1424.0]
+ [401.0, 841.0]
+ [3082.0, 1644.0]
+ [7608.0, 4458.0]
+ [7573.0, 3716.0]
+ [7265.0, 1268.0]
+ [6898.0, 1885.0]
+ [1112.0, 2049.0]
  ⋮
- [6271, 2135]
- [4985, 140]
- [1916, 1569]
- [7280, 4899]
- [7509, 3239]
- [10, 2676]
- [6807, 2993]
- [5185, 3258]
- [3023, 1942]
+ [6271.0, 2135.0]
+ [4985.0, 140.0]
+ [1916.0, 1569.0]
+ [7280.0, 4899.0]
+ [7509.0, 3239.0]
+ [10.0, 2676.0]
+ [6807.0, 2993.0]
+ [5185.0, 3258.0]
+ [3023.0, 1942.0]
 
 julia> get_optimal_tour(cities, GLPK.Optimizer, distance = TravelingSalesmanExact.ATT)
 ([5, 42, 24, 10, 45, 35, 4, 26, 2, 29  …  30, 36, 46, 33, 20, 47, 21, 32, 39, 48], 10628.0)
