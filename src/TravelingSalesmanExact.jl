@@ -29,8 +29,8 @@ const SLOW_SLEEP = Ref(1.5)
 
 Sets the default optimizer. For example,
 
-    using GLPK
-    set_default_optimizer(GLPK.Optimizer)
+    using HiGHS
+    set_default_optimizer(HiGHS.Optimizer)
 """
 set_default_optimizer!(O) = default_optimizer[] = O
 
@@ -170,28 +170,28 @@ end
 Solves the travelling salesman problem for a list of cities using JuMP by
 formulating a MILP using the Dantzig-Fulkerson-Johnson formulation and
 adaptively adding constraints to disallow non-maximal cycles. Returns an optimal
-tour and the cost of the optimal path. Optionally specify a distance metric. 
+tour and the cost of the optimal path. Optionally specify a distance metric.
 
 The second argument is mandatory if a default optimizer has not been set (via
 `set_default_optimizer`). This argument should be a function which creates an optimizer, e.g.
 
-    get_optimal_tour(cities, GLPK.Optimizer)
+    get_optimal_tour(cities, HiGHS.Optimizer)
 
 There are five boolean optional keyword arguments:
 
 * `verbose` (default: false) indicates whether or not to print lots of information as the algorithm proceeds.
 * `symmetric` indicates whether or not the cost matrix is symmetric. By default, `issymmetric` is used to check.
-* `lazy_constraints` indicates whether lazy constraints should be used (which requires a [compatible solver](https://www.juliaopt.org/JuMP.jl/v0.21/callbacks/#Available-solvers-1)).
-* `slow` artifically sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
+* `lazy_constraints` indicates whether [lazy constraints](https://jump.dev/JuMP.jl/stable/manual/callbacks/#Lazy-constraints) should be used (which requires a [compatible solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers), like GLPK).
+* `slow` artificially sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
 * `silent_optimizer` calls `JuMP.set_silent` on the resulting model to prevent the optimizer from emitting logging information.
 
 ## Example
 
 ```jldoctest
-julia> using TravelingSalesmanExact, GLPK, LinearAlgebra
+julia> using TravelingSalesmanExact, HiGHS, LinearAlgebra
 
-julia> set_default_optimizer!(GLPK.Optimizer)
-GLPK.Optimizer
+julia> set_default_optimizer!(HiGHS.Optimizer)
+HiGHS.Optimizer
 
 julia> cities = [[0, 0], [0, 1], [1, 1], [1, 0]]
 4-element Vector{Vector{Int64}}:
@@ -320,7 +320,7 @@ function _get_optimal_tour(
     end
 
     # counts for logging
-    iter = Ref(0) 
+    iter = Ref(0)
     tot_cycles = Ref(0)
     all_time = Ref(0.0)
 
@@ -328,7 +328,7 @@ function _get_optimal_tour(
         remove_cycles_callback = make_remove_cycles_callback(model, tour_matrix, has_cities, cities, verbose, symmetric, tot_cycles)
         MOI.set(model, MOI.LazyConstraintCallback(), remove_cycles_callback)
     end
-    
+
     num_cycles = 2 # just something > 1
 
     while num_cycles > 1
@@ -336,6 +336,7 @@ function _get_optimal_tour(
         all_time[] += t
         status = termination_status(model)
         status == MOI.OPTIMAL || @warn("Problem status not optimal; got status $status")
+        current_tour = value.(tour_matrix)
         num_cycles = remove_cycles!(model, tour_matrix; symmetric = symmetric)
         tot_cycles[] += num_cycles
         iter[] += 1
@@ -350,7 +351,7 @@ function _get_optimal_tour(
                 slow && sleep(max(0, SLOW_SLEEP[] - t))
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(
                     cities,
-                    value.(tour_matrix),
+                    current_tour,
                 )
             else
                 @info "Iteration $(iter[]) took $(format_time(t)), $description"
@@ -439,7 +440,7 @@ function simple_parse_tsp(filename; verbose = true)
         line = strip(line)
         line == "EOF" && break
 
-        if section == :Meta && verbose 
+        if section == :Meta && verbose
             println(line)
         end
         if section == :NODE_COORD_SECTION
@@ -465,7 +466,7 @@ A simple helper function to get the problem data for the ATT48 TSPLIB problem.
 # Example
 
 ```jldoctest
-julia> using TravelingSalesmanExact, GLPK
+julia> using TravelingSalesmanExact, HiGHS
 
 julia> cities = TravelingSalesmanExact.get_ATT48_cities()
 48-element Vector{Vector{Float64}}:
@@ -490,7 +491,7 @@ julia> cities = TravelingSalesmanExact.get_ATT48_cities()
  [5185.0, 3258.0]
  [3023.0, 1942.0]
 
-julia> get_optimal_tour(cities, GLPK.Optimizer, distance = TravelingSalesmanExact.ATT)
+julia> get_optimal_tour(cities, HiGHS.Optimizer, distance = TravelingSalesmanExact.ATT)
 ([5, 42, 24, 10, 45, 35, 4, 26, 2, 29  …  30, 36, 46, 33, 20, 47, 21, 32, 39, 48], 10628.0)
 
 ```
