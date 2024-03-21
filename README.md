@@ -44,7 +44,7 @@ This package is registered, so you can add it via
 ```
 
 You also need a
-[mixed-integer solver compatible with JuMP 19+](http://www.juliaopt.org/JuMP.jl/v0.19.0/installation/#Getting-Solvers-1)
+[mixed-integer solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
 to do the underlying optimization. For example, `HiGHS` is a free, open-source
 solver (see <https://github.com/jump-dev/HiGHS.jl> for the compatible Julia
 wrapper) and can be installed by
@@ -78,8 +78,6 @@ tour, cost = get_optimal_tour(cities; verbose = true)
 plot_cities(cities[tour])
 ```
 
-Note, if you are using an older version of JuMP (v0.19 or v0.20), you need to use `set_default_optimizer!(with_optimizer(HiGHS.Optimizer))` instead.
-
 To use Gurobi, the first few lines can be changed to:
 
 ```julia
@@ -89,13 +87,6 @@ set_default_optimizer!(() -> Gurobi.Optimizer(GurobiEnv, OutputFlag = 0))
 ```
 
 Note that without the `OutputFlag = 0` argument, Gurobi will print a lot of information about each iteration of the solve.
-
-`Mosek` is another commercial wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>). You also need a license properly configured; the older wrapper [Mosek.jl](https://github.com/JuliaOpt/Mosek.jl#installation) offers instructions for this. `Mosek` can be used as e.g.
-
-```julia
-using TravelingSalesmanExact, MosekTools
-set_default_optimizer!(() -> Mosek.Optimizer(QUIET = true))
-```
 
 One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
 
