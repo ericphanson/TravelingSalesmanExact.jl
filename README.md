@@ -5,7 +5,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/dev)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ericphanson.github.io/TravelingSalesmanExact.jl/stable)
 
-This is a simple Julia package to solve the travelling salesman problem using an
+This is a simple Julia package to solve the traveling salesman problem using an
 Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from
 the very nice blog post <http://opensourc.es/blog/mip-tsp> which also has a
 [Julia implementation](https://github.com/opensourcesblog/mip_tsp). In the
@@ -23,13 +23,13 @@ Additionally, see
 for one use of this package: generating exact cost values for test-cases to help
 tune the heuristics of the aforementioned `TravelingSalesmanHeuristics.jl`.
 
->Generating subtour elimination constraints for the TSP from pure integer solutions  
->Pferschy, U. & Staněk, R. Cent Eur J Oper Res (2017) 25: 231.  
+>Generating subtour elimination constraints for the TSP from pure integer solutions
+>Pferschy, U. & Staněk, R. Cent Eur J Oper Res (2017) 25: 231.
 ><https://doi.org/10.1007/s10100-016-0437-8>
 
 
->Solution of a Large-Scale Traveling-Salesman Problem  
->G. Dantzig, R. Fulkerson, and S. Johnson, 	J. Oper. Res. Soc. (1954) 2:4, 393-410  
+>Solution of a Large-Scale Traveling-Salesman Problem
+>G. Dantzig, R. Fulkerson, and S. Johnson, 	J. Oper. Res. Soc. (1954) 2:4, 393-410
 ><https://doi.org/10.1287/opre.2.4.393>
 
 
@@ -44,13 +44,13 @@ This package is registered, so you can add it via
 ```
 
 You also need a
-[mixed-integer solver compatible with JuMP 19+](http://www.juliaopt.org/JuMP.jl/v0.19.0/installation/#Getting-Solvers-1)
-to do the underlying optimization. For example, `GLPK` is a free, open-source
-solver (see <https://github.com/JuliaOpt/GLPK.jl> for the compatible Julia
+[mixed-integer solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
+to do the underlying optimization. For example, `HiGHS` is a free, open-source
+solver (see <https://github.com/jump-dev/HiGHS.jl> for the compatible Julia
 wrapper) and can be installed by
 
 ```julia
-] add GLPK
+] add HiGHS
 ```
 
 `Gurobi` is a commercial wrapper that offers free academic licenses. It has a
@@ -67,18 +67,16 @@ Note you also need Gurobi itself installed and a license properly configured.
 
 ![Example](example.svg)
 
-With GLPK:
+With HiGHS:
 
 ```julia
-using TravelingSalesmanExact, GLPK
-set_default_optimizer!(GLPK.Optimizer)
+using TravelingSalesmanExact, HiGHS
+set_default_optimizer!(HiGHS.Optimizer)
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities; verbose = true)
 plot_cities(cities[tour])
 ```
-
-Note, if you are using an older version of JuMP (v0.19 or v0.20), you need to use `set_default_optimizer!(with_optimizer(GLPK.Optimizer))` instead.
 
 To use Gurobi, the first few lines can be changed to:
 
@@ -88,22 +86,15 @@ const GurobiEnv = Gurobi.Env()
 set_default_optimizer!(() -> Gurobi.Optimizer(GurobiEnv, OutputFlag = 0))
 ```
 
-Note that without the `OutputFlag = 0` argument, Gurobi will print a lot of information about each iteration of the solve. 
-
-`Mosek` is another commercial wrapper that offers free academic licenses. It has a compatible Julia wrapper `MosekTools` (<https://github.com/JuliaOpt/MosekTools.jl>). You also need a license properly configured; the older wrapper [Mosek.jl](https://github.com/JuliaOpt/Mosek.jl#installation) offers instructions for this. `Mosek` can be used as e.g.
-
-```julia
-using TravelingSalesmanExact, MosekTools
-set_default_optimizer!(() -> Mosek.Optimizer(QUIET = true))
-```
+Note that without the `OutputFlag = 0` argument, Gurobi will print a lot of information about each iteration of the solve.
 
 One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
 
 ```julia
-using TravelingSalesmanExact, GLPK
+using TravelingSalesmanExact, HiGHS
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
-tour, cost = get_optimal_tour(cities, GLPK.Optimizer; verbose = true)
+tour, cost = get_optimal_tour(cities, HiGHS.Optimizer; verbose = true)
 plot_cities(cities[tour])
 ```
 

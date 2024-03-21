@@ -2,9 +2,10 @@
 Asciicast = "2600d445-abca-43b9-92aa-ce144ac0b05b"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
 TravelingSalesmanExact = "737fac7d-4440-55ef-927e-002196e95561"
 
 [compat]
 Asciicast = "0.1"
-Documenter = "0.27.8"
+Documenter = "1"
 GLPK = "1"

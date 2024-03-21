@@ -1,6 +1,6 @@
-using TravelingSalesmanExact, GLPK, Test
+using TravelingSalesmanExact, HiGHS, Test, GLPK
 using TravelingSalesmanExact: format_time
-set_default_optimizer!(GLPK.Optimizer)
+set_default_optimizer!(HiGHS.Optimizer)
 
 function test_valid_tour(tour, L)
     @test length(tour) == L
@@ -57,7 +57,7 @@ end
     ]
     t1, c1 = test_tour(cost; verbose = true)
     t2, c2 = test_tour(cost; verbose = false)
-    t3, c3 = test_tour(cost; verbose = false, lazy_constraints = true)
+    t3, c3 = test_tour(cost, GLPK.Optimizer; verbose = false, lazy_constraints = true)
     @test c1 ≈ c2
     @test c2 ≈ c3
 
@@ -71,7 +71,7 @@ end
 @testset "Medium random asymmetric" begin
     cost = 10 * rand(15, 15)
     t1, c1 = test_tour(cost; verbose = false)
-    t2, c2 = test_tour(cost; verbose = true, lazy_constraints = true)
+    t2, c2 = test_tour(cost, GLPK.Optimizer; verbose = true, lazy_constraints = true)
     @test c1 ≈ c2
 end
 
@@ -88,7 +88,7 @@ end
     t4, c4 = test_tour(cost_sym; verbose = false)
     t5, c5 = test_tour(cost_sym; symmetric = true, verbose = false)
     t6, c6 = test_tour(cost_sym; symmetric = false, verbose = false)
-    t7, c7 = test_tour(cost_sym; symmetric = false, verbose = true, lazy_constraints = true)
+    t7, c7 = test_tour(cost_sym, GLPK.Optimizer; symmetric = false, verbose = true, lazy_constraints = true)
     @test c4 ≈ c5
     @test c5 ≈ c6
     @test c6 ≈ c7
@@ -104,7 +104,7 @@ end
         [16.6325, 51.9001],
     ]
     t7, c7 = test_tour(cities; verbose = true)
-    t8, c8 = @inferred test_tour(cities; verbose = false, symmetric = false)
+    t8, c8 = test_tour(cities; verbose = false, symmetric = false)
     cost = [TravelingSalesmanExact.euclidean_distance(c1, c2) for c1 in cities, c2 in cities]
     t9, c9 = test_tour(cost; verbose = false, symmetric = false)
     t10, c10 = test_tour(cost; verbose = false, symmetric = true)
@@ -134,8 +134,8 @@ end
         [82.70468776751652, 74.73476674725042],
         [8.637366704185245, 87.23819026270408]
     ]
-    t7, c7 = test_tour(cities; verbose = true, lazy_constraints=true)
-    t8, c8 = @inferred test_tour(cities; verbose = false, symmetric = false)
+    t7, c7 = test_tour(cities, GLPK.Optimizer; verbose = true, lazy_constraints=true)
+    t8, c8 = test_tour(cities; verbose = false, symmetric = false)
     cost = [TravelingSalesmanExact.euclidean_distance(c1, c2) for c1 in cities, c2 in cities]
     t9, c9 = test_tour(cost; verbose = false, symmetric = false)
     t10, c10 = test_tour(cost; verbose = false, symmetric = true)
@@ -152,7 +152,7 @@ end
     cost = rand(5, 5)
     TravelingSalesmanExact.reset_default_optimizer!()
     @test_throws ArgumentError test_tour(cost)
-    set_default_optimizer!(GLPK.Optimizer)
+    set_default_optimizer!(HiGHS.Optimizer)
 end
 
 @testset "att48.tsp" begin
