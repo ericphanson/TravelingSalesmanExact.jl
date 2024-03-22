@@ -4,3 +4,4 @@ Manifest.toml
 /docs/site/
 /dev
 test/current/
+!tsplib/Manifest.toml

@@ -1,0 +1,9 @@
+[deps]
+AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
+ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+TSPLIB = "b1c258e7-59ae-4b06-a547-f10871db1548"
+TravelingSalesmanExact = "737fac7d-4440-55ef-927e-002196e95561"
