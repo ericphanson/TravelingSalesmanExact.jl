@@ -1,11 +1,11 @@
-using TravelingSalesmanExact, HiGHS, TSPLIB, CairoMakie, CSV
+using TravelingSalesmanExact, SCIP, TSPLIB, CairoMakie, CSV
 using AlgebraOfGraphics, Dates
 using InteractiveUtils
 using ArgCheck
 using JuMP
 
 MAX_NUM_CITIES = 200
-set_default_optimizer!(HiGHS.Optimizer)
+set_default_optimizer!(SCIP.Optimizer)
 
 # set_default_optimizer!(optimizer_with_attributes(HiGHS.Optimizer, "time_limit" => 120))
 
@@ -28,7 +28,8 @@ results = []
 for tsp in problems
     (tour, cost), timing... = @timed get_optimal_tour(tsp.weights)
     optimal = cost ≈ tsp.optimal
-    @info "Solved $(tsp.name)" optimal timing.time
+    @info "Solved $(tsp.name)" optimal timing.time cost tsp.optimal
+    @check optimal
     push!(results, (; tsp.name, tsp.dimension, optimal, timing...))
 end
 
