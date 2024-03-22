@@ -4,6 +4,7 @@ using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
 using MathOptInterface: MathOptInterface
 using TravelingSalesmanHeuristics: TravelingSalesmanHeuristics
 using Clustering: Clustering
+using Statistics
 
 const MOI = MathOptInterface
 export get_optimal_tour,
@@ -302,7 +303,6 @@ function _get_optimal_tour(cost::AbstractMatrix,
                            slow,
                            silent_optimizer,
                            initial_subtours)
-
     initial_subtours = copy(initial_subtours)
     n = size(cost, 1)
 
@@ -310,25 +310,26 @@ function _get_optimal_tour(cost::AbstractMatrix,
     # and it's not worth doing this for tiny problems
     if symmetric && n > 10
         n = size(cost, 1)
-        c = Clustering.hclust(cost)
-        # heuristic: start with number of clusters equal to 10%
-        k = n ÷ 10
-        cluster_assignment = Clustering.cutree(c; k)
-
-        for i in 1:k
-            inds = findall(==(i), cluster_assignment)
-            subproblem = cost[inds, inds]
+        # heuristic choice of radius parameter
+        closest_neighbors = (minimum(@view(cost[i, [1:(i - 1); (i + 1):end]])) for i in 1:n)
+        r = quantile(closest_neighbors, 0.9)
+        c = Clustering.dbscan(cost, r; min_cluster_size=4, metric=nothing)
+        for cluster in c.clusters
+            inds = [cluster.boundary_indices; cluster.core_indices]
             # skip tiny and huge clusters
             3 < length(inds) < 4n / 5 || continue
-            (tour, _), t = @timed _basic_ilp(subproblem,
-                                             optimizer,
-                                             symmetric,
-                                             false, # verobose
-                                             lazy_constraints,
-                                             cities,
-                                             false, # slow
-                                             silent_optimizer,
-                                             [])
+            subproblem = cost[inds, inds]
+            # we could skip re-clustering and do `_basic_ilp` here,
+            # but if the clusters get big enough, it may be worth it (?)
+            (tour, _), t = @timed _get_optimal_tour(subproblem,
+                                                    optimizer,
+                                                    symmetric,
+                                                    false, # verobose
+                                                    lazy_constraints,
+                                                    cities,
+                                                    false, # slow
+                                                    silent_optimizer,
+                                                    [])
 
             verbose &&
                 @info "Solved subcluster problem with $(size(subproblem, 1)) cities in time $t seconds"

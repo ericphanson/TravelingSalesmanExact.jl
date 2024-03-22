@@ -50,12 +50,12 @@ This package is registered, so you can add it via
 
 You also need a
 [mixed-integer solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
-to do the underlying optimization. For example, `HiGHS` is a free, open-source
-solver (see <https://github.com/jump-dev/HiGHS.jl> for the compatible Julia
+to do the underlying optimization. For example, `SCIP` is a free, open-source
+solver (see <https://github.com/scipopt/SCIP.jl> for the compatible Julia
 wrapper) and can be installed by
 
 ```julia
-] add HiGHS
+] add SCIP
 ```
 
 `Gurobi` is a commercial wrapper that offers free academic licenses. It has a
@@ -78,11 +78,11 @@ See [./tsplib](./tsplib) for some benchmarking results on small problems from [T
 
 ![Example](example.svg)
 
-With HiGHS:
+With SCIP:
 
 ```julia
-using TravelingSalesmanExact, HiGHS
-set_default_optimizer!(HiGHS.Optimizer)
+using TravelingSalesmanExact, SCIP
+set_default_optimizer!(optimizer_with_attributes(SCIP.Optimizer, "limits/maxorigsol" => 100))
 n = 50
 cities = [ 100*rand(2) for _ in 1:n];
 tour, cost = get_optimal_tour(cities; verbose = true)
@@ -102,11 +102,9 @@ Note that without the `OutputFlag = 0` argument, Gurobi will print a lot of info
 One can also pass an optimizer to `get_optimal_tour` instead of setting the default for the session, e.g.
 
 ```julia
-using TravelingSalesmanExact, HiGHS
-n = 50
+using TravelingSalesmanExact, SCIP
+n = 500
 cities = [ 100*rand(2) for _ in 1:n];
-tour, cost = get_optimal_tour(cities, HiGHS.Optimizer; verbose = true)
+tour, cost = get_optimal_tour(cities, SCIP.Optimizer; verbose = true)
 plot_cities(cities[tour])
 ```
-
-See <https://ericphanson.github.io/TravelingSalesmanBenchmarks.jl/html/random_50_cities_stats.html> for a benchmark comparing the computation time between these solvers on random problems as well as comparing to  that of heuristics.

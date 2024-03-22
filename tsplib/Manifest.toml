@@ -1666,10 +1666,10 @@ weakdeps = ["Random", "Test"]
     TestExt = ["Test", "Random"]
 
 [[deps.TravelingSalesmanExact]]
-deps = ["Clustering", "JuMP", "LinearAlgebra", "Logging", "MathOptInterface", "Printf", "TravelingSalesmanHeuristics", "UnicodePlots"]
+deps = ["Clustering", "JuMP", "LinearAlgebra", "Logging", "MathOptInterface", "Printf", "Statistics", "TravelingSalesmanHeuristics", "UnicodePlots"]
 path = ".."
 uuid = "737fac7d-4440-55ef-927e-002196e95561"
-version = "0.3.10"
+version = "0.3.11"
 
 [[deps.TravelingSalesmanHeuristics]]
 deps = ["LinearAlgebra", "Random"]
