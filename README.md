@@ -63,6 +63,12 @@ can be installed via
 
 Note you also need Gurobi itself installed and a license properly configured.
 
+## Performance
+
+See [./tsplib](./tsplib) for some benchmarking results on small problems from [TSPLIB95](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/).
+
+![](./tsplib/200.png)
+
 ### Examples
 
 ![Example](example.svg)
