@@ -1,4 +1,4 @@
-using TravelingSalesmanExact, SCIP, Test, GLPK
+using TravelingSalesmanExact, SCIP, Test, GLPK, HiGHS
 using TravelingSalesmanExact: format_time
 set_default_optimizer!(SCIP.Optimizer)
 
@@ -56,12 +56,6 @@ end
     t3, c3 = test_tour(cost, GLPK.Optimizer; verbose=false, lazy_constraints=true)
     @test c1 ≈ c2
     @test c2 ≈ c3
-
-    # incorrect `symmetric` should give the wrong answers
-    t4, c4 = get_optimal_tour(cost; verbose=false, symmetric=true)
-    test_valid_tour(t4, 5)
-    @test !(c2 ≈ c4)
-    @test !(c4 ≈ tour_cost(t4, cost))
 end
 
 @testset "Medium random asymmetric" begin
@@ -152,14 +146,19 @@ end
 
     @test cities == TravelingSalesmanExact.get_ATT48_cities()
 
+    sym_tour, sym_cost = test_tour(cities, HiGHS.Optimizer;
+                                   distance=TravelingSalesmanExact.ATT)
+
+    @test sym_cost ≈ 10628
+
+    asym_tour, asym_cost = test_tour(cities, SCIP.Optimizer;
+                                     distance=TravelingSalesmanExact.ATT,
+                                     symmetric=false,)
+    @test asym_cost ≈ 10628
+
     sym_tour, sym_cost = test_tour(cities;
                                    distance=TravelingSalesmanExact.ATT,
                                    verbose=true,
                                    slow=true,)
     @test sym_cost ≈ 10628
-
-    asym_tour, asym_cost = test_tour(cities;
-                                     distance=TravelingSalesmanExact.ATT,
-                                     symmetric=false,)
-    @test asym_cost ≈ 10628
 end

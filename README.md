@@ -10,9 +10,14 @@ Dantzig-Fulkerson-Johnson algorithm. I learned about this kind of algorithm from
 the very nice blog post <http://opensourc.es/blog/mip-tsp> which also has a
 [Julia implementation](https://github.com/opensourcesblog/mip_tsp). In the
 symmetric case, the implementation in this package uses the symmetry of the
-problem to reduce the number of variables, and essentially is the most basic
-version of the algorithms described by (Pferschy and Staněk, 2017) (i.e. no
-warmstarts or clustering methods for subtour elimination as a presolve step).
+problem to reduce the number of variables, and is similar to the "reduced clustering"
+version of the algorithms described by (Pferschy and Staněk, 2017), using TravelingSalesmanHeuristics to warmstart the solves with good solutions, as well as
+splitting the problem into subproblems using Clustering.jl to obtain some good
+subtour elimination constraints.
+
+While TravelingSalesmanExact is functional and somewhat practical for small problems,
+in 2003, [Concorde](https://www.math.uwaterloo.ca/tsp/concorde/benchmarks/bench.html) already could solve much larger problems faster! So we are far away from the state of the art here.
+See [Performance](#performance) below for some more details.
 
 See also
 [TravelingSalesmanHeuristics.jl](https://github.com/evanfields/TravelingSalesmanHeuristics.jl)

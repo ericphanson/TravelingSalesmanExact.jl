@@ -178,6 +178,12 @@ weakdeps = ["SparseArrays"]
     [deps.ChainRulesCore.extensions]
     ChainRulesCoreSparseArraysExt = "SparseArrays"
 
+[[deps.Clustering]]
+deps = ["Distances", "LinearAlgebra", "NearestNeighbors", "Printf", "Random", "SparseArrays", "Statistics", "StatsBase"]
+git-tree-sha1 = "9ebb045901e9bbf58767a9f34ff89831ed711aae"
+uuid = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+version = "0.15.7"
+
 [[deps.CodecBzip2]]
 deps = ["Bzip2_jll", "Libdl", "TranscodingStreams"]
 git-tree-sha1 = "9b1ca1aa6ce3f71b3d1840c538a8210a043625eb"
@@ -1044,6 +1050,12 @@ git-tree-sha1 = "bd4eb207e17878ceec404e74130639b6dda8b63b"
 uuid = "68e3532b-a499-55ff-9963-d1c0c0748b3a"
 version = "6.4.1+0"
 
+[[deps.NearestNeighbors]]
+deps = ["Distances", "StaticArrays"]
+git-tree-sha1 = "ded64ff6d4fdd1cb68dfcbb818c69e144a5b2e4c"
+uuid = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+version = "0.4.16"
+
 [[deps.Netpbm]]
 deps = ["FileIO", "ImageCore", "ImageMetadata"]
 git-tree-sha1 = "d92b107dbb887293622df7697a2223f9f8176fcd"
@@ -1654,10 +1666,16 @@ weakdeps = ["Random", "Test"]
     TestExt = ["Test", "Random"]
 
 [[deps.TravelingSalesmanExact]]
-deps = ["JuMP", "LinearAlgebra", "Logging", "MathOptInterface", "Printf", "UnicodePlots"]
+deps = ["Clustering", "JuMP", "LinearAlgebra", "Logging", "MathOptInterface", "Printf", "TravelingSalesmanHeuristics", "UnicodePlots"]
 path = ".."
 uuid = "737fac7d-4440-55ef-927e-002196e95561"
 version = "0.3.10"
+
+[[deps.TravelingSalesmanHeuristics]]
+deps = ["LinearAlgebra", "Random"]
+git-tree-sha1 = "723b16cbc89f37986f09a374cc35efca3ff89a23"
+uuid = "8c8f4381-2cdd-507c-846c-be2bcff6f45f"
+version = "0.3.4"
 
 [[deps.TriplotBase]]
 git-tree-sha1 = "4d4ed7f294cda19382ff7de4c137d24d16adc89b"

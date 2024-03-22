@@ -5,7 +5,9 @@ using ArgCheck
 using JuMP
 
 MAX_NUM_CITIES = 200
-set_default_optimizer!(SCIP.Optimizer)
+# for some reason SCIP needs this...
+set_default_optimizer!(optimizer_with_attributes(SCIP.Optimizer, "limits/maxorigsol" => 100))
+
 
 # set_default_optimizer!(optimizer_with_attributes(HiGHS.Optimizer, "time_limit" => 120))
 

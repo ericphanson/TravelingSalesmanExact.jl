@@ -2,23 +2,14 @@ module TravelingSalesmanExact
 
 using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
 using MathOptInterface: MathOptInterface
+using TravelingSalesmanHeuristics: TravelingSalesmanHeuristics
+using Clustering: Clustering
+
 const MOI = MathOptInterface
 export get_optimal_tour,
        plot_cities,
        simple_parse_tsp,
        set_default_optimizer!
-
-# added in Julia 1.2
-if VERSION < v"1.2.0-"
-    import Base.>
-    >(x) = Base.Fix2(>, x)
-end
-
-# added in Julia 1.1
-if VERSION < v"1.1.0-"
-    isnothing(::Any) = false
-    isnothing(::Nothing) = true
-end
 
 const default_optimizer = Ref{Any}(nothing)
 
@@ -115,7 +106,6 @@ and add constraints to the JuMP model to disallow them. Returns the
 number of cycles found.
 """
 function remove_cycles!(model, tour_matrix, solutions; symmetric)
-    @show result_count(model)
     cycles_list = map(get_cycles, solutions)
     n_1 = length(first(cycles_list))
     filter!(cycles_list) do cycles
@@ -228,7 +218,8 @@ function get_optimal_tour(cities::AbstractVector,
                           symmetric=nothing,
                           lazy_constraints=false,
                           slow=false,
-                          silent_optimizer=true,)
+                          silent_optimizer=true,
+                          initial_subtours=[])
     isnothing(optimizer) &&
         throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
@@ -237,7 +228,7 @@ function get_optimal_tour(cities::AbstractVector,
         symmetric = issymmetric(cost)
     end
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities,
-                             slow, silent_optimizer)
+                             slow, silent_optimizer, initial_subtours)
 end
 
 function get_optimal_tour(cost::AbstractMatrix,
@@ -246,13 +237,14 @@ function get_optimal_tour(cost::AbstractMatrix,
                           symmetric=issymmetric(cost),
                           lazy_constraints=false,
                           slow=false,
-                          silent_optimizer=true)
+                          silent_optimizer=true,
+                          initial_subtours=[])
     size(cost, 1) == size(cost, 2) ||
         throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) &&
         throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, nothing,
-                             slow, silent_optimizer)
+                             slow, silent_optimizer, initial_subtours)
 end
 
 function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
@@ -280,6 +272,7 @@ function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
             end
         end
     end
+
     return tour_matrix
 end
 
@@ -307,17 +300,92 @@ function _get_optimal_tour(cost::AbstractMatrix,
                            lazy_constraints,
                            cities,
                            slow,
-                           silent_optimizer)
+                           silent_optimizer,
+                           initial_subtours)
+
+    initial_subtours = copy(initial_subtours)
+    n = size(cost, 1)
+
+    # our clustering algorithm only supports symmetric distance matrices
+    # and it's not worth doing this for tiny problems
+    if symmetric && n > 10
+        n = size(cost, 1)
+        c = Clustering.hclust(cost)
+        # heuristic: start with number of clusters equal to 10%
+        k = n ÷ 10
+        cluster_assignment = Clustering.cutree(c; k)
+
+        for i in 1:k
+            inds = findall(==(i), cluster_assignment)
+            subproblem = cost[inds, inds]
+            # skip tiny and huge clusters
+            3 < length(inds) < 4n / 5 || continue
+            (tour, _), t = @timed _basic_ilp(subproblem,
+                                             optimizer,
+                                             symmetric,
+                                             false, # verobose
+                                             lazy_constraints,
+                                             cities,
+                                             false, # slow
+                                             silent_optimizer,
+                                             [])
+
+            verbose &&
+                @info "Solved subcluster problem with $(size(subproblem, 1)) cities in time $t seconds"
+            push!(initial_subtours, tour)
+        end
+    end
+    return _basic_ilp(cost,
+                      optimizer,
+                      symmetric,
+                      verbose,
+                      lazy_constraints,
+                      cities,
+                      slow,
+                      silent_optimizer,
+                      initial_subtours)
+end
+
+function _basic_ilp(cost::AbstractMatrix,
+                    optimizer,
+                    symmetric,
+                    verbose,
+                    lazy_constraints,
+                    cities,
+                    slow,
+                    silent_optimizer,
+                    initial_subtours)
     has_cities = !isnothing(cities)
 
     model = Model(optimizer)
     silent_optimizer && set_silent(model)
     tour_matrix = build_tour_matrix(model, cost, symmetric)
+    for cycle in initial_subtours
+        cycle_constraint = subtour_elimination_constraint(tour_matrix, cycle; symmetric)
+        add_constraint(model, cycle_constraint)
+    end
+    heuristic_initialization = true
+    local init!
+    if heuristic_initialization
+        (heuristic_path, cost), t = @timed TravelingSalesmanHeuristics.solve_tsp(cost;
+                                                                                 quality_factor=80)
+        verbose && @info "Heuristic solve obtained cost $cost in time $t seconds"
+        init! = () -> begin
+            set_start_value.(tour_matrix, 0)
+            for i in 1:(length(heuristic_path) - 1)
+                set_start_value(tour_matrix[heuristic_path[i], heuristic_path[i + 1]], 1)
+            end
+        end
+        init!()
+    end
 
-    if has_cities && verbose
-        @info "Starting optimization." plot_cities(cities)
-    elseif verbose
-        @info "Starting optimization."
+    if verbose
+        msg = "Starting optimization with $(length(initial_subtours)) initial subtour elimination constraints."
+        if has_cities
+            @info msg plot_cities(cities)
+        else
+            @info msg
+        end
     end
 
     # counts for logging
@@ -335,22 +403,32 @@ function _get_optimal_tour(cost::AbstractMatrix,
     num_cycles = 2 # just something > 1
     local solution, obj
     while num_cycles > 1
+        # open("model.mps"; write=true) do io
+        #     return write(io, model; format=MOI.FileFormats.FORMAT_MPS)
+        # end
+        if heuristic_initialization
+            init!()
+        end
         t = @elapsed optimize!(model)
         all_time[] += t
         status = termination_status(model)
         status == MOI.OPTIMAL || @warn("Problem status not optimal; got status $status")
         obj = objective_value(model)
-        solutions = [value.(tour_matrix; result=i) for i in 1:result_count(model)]
+
+        solutions = [value.(tour_matrix; result=i)
+                     for i in 1:result_count(model)
+                     if primal_status(model; result=i) == MOI.FEASIBLE_POINT]
         solution = first(solutions)
         num_cycles, num_cycles_all = remove_cycles!(model, tour_matrix, solutions;
                                                     symmetric=symmetric)
+
         tot_cycles[] += num_cycles_all
         iter[] += 1
         if verbose
             if num_cycles == 1
                 description = "found a full cycle!"
             else
-                description = "disallowed $num_cycles cycles."
+                description = "disallowed $num_cycles cycles over $(length(solutions)) feasible solutions."
             end
 
             if has_cities
@@ -426,10 +504,12 @@ function subtour_elimination_constraint(tour_matrix, cycle; symmetric)
     N = size(tour_matrix, 1)
 
     # Eq. 6 of Pferschy & Stanek (10.1007/s10100-016-0437-8)
-    if length(cycle) <= (2N + 1) / 3
+    if length(cycle) <= (2N + 1) / 3 || !symmetric
         constr = symmetric ? 2 * length(cycle) - 2 : length(cycle) - 1
         return @build_constraint(sum(tour_matrix[cycle, cycle]) <= constr)
     else
+        # TODO: handle asymmetric case here
+        # (for now we just always take the other path)
         not_cycle = sort(setdiff(1:N, cycle))
         return @build_constraint(sum(tour_matrix[cycle, not_cycle]) >= 2)
     end
