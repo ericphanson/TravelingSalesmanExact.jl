@@ -273,7 +273,6 @@ function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
             end
         end
     end
-
     return tour_matrix
 end
 
