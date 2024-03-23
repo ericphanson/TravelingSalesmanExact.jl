@@ -1,9 +1,10 @@
-using TravelingSalesmanExact, SCIP, Test, GLPK, HiGHS
+using TravelingSalesmanExact, Test, GLPK, HiGHS
 using TravelingSalesmanExact: format_time
 
 if Sys.iswindows()
     set_default_optimizer!(HiGHS.Optimizer)
 else
+    using SCIP
     set_default_optimizer!(SCIP.Optimizer)
 end
 
