@@ -10,8 +10,8 @@ At least on my m1 macbook pro:
 
 ![](50.png)
 
-## Tours with up to 200 cities are solved exactly in ≤ 100s
+## Tours with up to 200 cities are solved exactly in ≤ 50s
 
-But variance is high and your mileage may depend on the problem. At this scale a different approach will likely work better.
+But variance is high and your mileage may depend on the problem.
 
 ![](200.png)

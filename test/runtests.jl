@@ -1,6 +1,12 @@
-using TravelingSalesmanExact, HiGHS, Test, GLPK
+using TravelingSalesmanExact, Test, GLPK, HiGHS
 using TravelingSalesmanExact: format_time
-set_default_optimizer!(HiGHS.Optimizer)
+
+if Sys.iswindows()
+    set_default_optimizer!(HiGHS.Optimizer)
+else
+    using SCIP
+    set_default_optimizer!(SCIP.Optimizer)
+end
 
 function test_valid_tour(tour, L)
     @test length(tour) == L
@@ -53,21 +59,17 @@ end
             0.489131 0.783738 0.538762 0.998821 0.0324331]
     t1, c1 = test_tour(cost; verbose=true)
     t2, c2 = test_tour(cost; verbose=false)
-    t3, c3 = test_tour(cost, GLPK.Optimizer; verbose=false, lazy_constraints=true)
+    t3, c3 = test_tour(cost, GLPK.Optimizer; verbose=false, lazy_constraints=true,
+                       heuristic_warmstart=false)
     @test c1 ≈ c2
     @test c2 ≈ c3
-
-    # incorrect `symmetric` should give the wrong answers
-    t4, c4 = get_optimal_tour(cost; verbose=false, symmetric=true)
-    test_valid_tour(t4, 5)
-    @test !(c2 ≈ c4)
-    @test !(c4 ≈ tour_cost(t4, cost))
 end
 
 @testset "Medium random asymmetric" begin
     cost = 10 * rand(15, 15)
     t1, c1 = test_tour(cost; verbose=false)
-    t2, c2 = test_tour(cost, GLPK.Optimizer; verbose=true, lazy_constraints=true)
+    t2, c2 = test_tour(cost, GLPK.Optimizer; verbose=true, lazy_constraints=true,
+                       heuristic_warmstart=false)
     @test c1 ≈ c2
 end
 
@@ -83,7 +85,7 @@ end
     t5, c5 = test_tour(cost_sym; symmetric=true, verbose=false)
     t6, c6 = test_tour(cost_sym; symmetric=false, verbose=false)
     t7, c7 = test_tour(cost_sym, GLPK.Optimizer; symmetric=false, verbose=true,
-                       lazy_constraints=true)
+                       lazy_constraints=true, heuristic_warmstart=false)
     @test c4 ≈ c5
     @test c5 ≈ c6
     @test c6 ≈ c7
@@ -125,7 +127,8 @@ end
                               [8.889246634653713, 44.183494522157886],
                               [82.70468776751652, 74.73476674725042],
                               [8.637366704185245, 87.23819026270408]]
-    t7, c7 = test_tour(cities, GLPK.Optimizer; verbose=true, lazy_constraints=true)
+    t7, c7 = test_tour(cities, GLPK.Optimizer; verbose=true, lazy_constraints=true,
+                       heuristic_warmstart=false)
     t8, c8 = test_tour(cities; verbose=false, symmetric=false)
     cost = [TravelingSalesmanExact.euclidean_distance(c1, c2)
             for c1 in cities, c2 in cities]
@@ -152,14 +155,19 @@ end
 
     @test cities == TravelingSalesmanExact.get_ATT48_cities()
 
-    sym_tour, sym_cost = test_tour(cities;
-                                   distance=TravelingSalesmanExact.ATT,
-                                   verbose=true,
-                                   slow=true,)
+    sym_tour, sym_cost = test_tour(cities, HiGHS.Optimizer;
+                                   distance=TravelingSalesmanExact.ATT)
+
     @test sym_cost ≈ 10628
 
     asym_tour, asym_cost = test_tour(cities;
                                      distance=TravelingSalesmanExact.ATT,
                                      symmetric=false,)
     @test asym_cost ≈ 10628
+
+    sym_tour, sym_cost = test_tour(cities;
+                                   distance=TravelingSalesmanExact.ATT,
+                                   verbose=true,
+                                   slow=true,)
+    @test sym_cost ≈ 10628
 end

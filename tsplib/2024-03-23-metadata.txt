@@ -1,3 +1,21 @@
+Version info:
+Julia Version 1.10.2
+Commit bd47eca2c8a (2024-03-01 10:14 UTC)
+Build Info:
+  Official https://julialang.org/ release
+Platform Info:
+  OS: macOS (arm64-apple-darwin22.4.0)
+  CPU: 8 × Apple M1
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-15.0.7 (ORCJIT, apple-m1)
+Threads: 4 default, 0 interactive, 2 GC (on 4 virtual cores)
+Environment:
+  JULIA_NUM_THREADS = 4
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE = eager
+
+Manifest:
+
 # This file is machine-generated - editing it directly is not advised
 
 julia_version = "1.10.2"

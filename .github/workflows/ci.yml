@@ -19,6 +19,10 @@ on:
       - 'src/**'
       - 'deps/**'
       - 'Project.toml'
+
+env:
+  SCIP_JL_SKIP_LIB_CHECK: true
+
 jobs:
   test:
     timeout-minutes: 30

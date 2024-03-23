@@ -2,23 +2,15 @@ module TravelingSalesmanExact
 
 using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
 using MathOptInterface: MathOptInterface
+using TravelingSalesmanHeuristics: TravelingSalesmanHeuristics
+using Clustering: Clustering
+using Statistics
+
 const MOI = MathOptInterface
 export get_optimal_tour,
        plot_cities,
        simple_parse_tsp,
        set_default_optimizer!
-
-# added in Julia 1.2
-if VERSION < v"1.2.0-"
-    import Base.>
-    >(x) = Base.Fix2(>, x)
-end
-
-# added in Julia 1.1
-if VERSION < v"1.1.0-"
-    isnothing(::Any) = false
-    isnothing(::Nothing) = true
-end
 
 const default_optimizer = Ref{Any}(nothing)
 
@@ -108,21 +100,25 @@ function plot_tour(cities, perm_matrix)
 end
 
 """
-    remove_cycles!(model, tour_matrix)
+    remove_cycles!(model, solutions)
 
-Find the (non-maximal-length) cycles in the current solution `tour_matrix`
+Find the (non-maximal-length) cycles in the current solutions `solutions`
 and add constraints to the JuMP model to disallow them. Returns the
 number of cycles found.
 """
-function remove_cycles!(model, tour_matrix; symmetric)
-    tour_matrix_val = value.(tour_matrix)
-    cycles = get_cycles(tour_matrix_val)
-    length(cycles) == 1 && return 1
-    for cycle in cycles
-        constr = symmetric ? 2 * length(cycle) - 2 : length(cycle) - 1
-        @constraint(model, sum(tour_matrix[cycle, cycle]) <= constr)
+function remove_cycles!(model, tour_matrix, solutions; symmetric)
+    cycles_list = map(get_cycles, solutions)
+    n_1 = length(first(cycles_list))
+    filter!(cycles_list) do cycles
+        return length(cycles) > 1
     end
-    return length(cycles)
+    n_cycles = map(length, cycles_list)
+    all_cycles = unique(Iterators.flatten(cycles_list))
+    for cycle in all_cycles
+        cycle_constraint = subtour_elimination_constraint(tour_matrix, cycle; symmetric)
+        add_constraint(model, cycle_constraint)
+    end
+    return n_1, sum(n_cycles)
 end
 
 """
@@ -183,6 +179,7 @@ There are five boolean optional keyword arguments:
 * `lazy_constraints` indicates whether [lazy constraints](https://jump.dev/JuMP.jl/stable/manual/callbacks/#Lazy-constraints) should be used (which requires a [compatible solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers), like GLPK).
 * `slow` artificially sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
 * `silent_optimizer` calls `JuMP.set_silent` on the resulting model to prevent the optimizer from emitting logging information.
+* `heuristic_warmstart=true`: whether or not to warmstart the solves using a heuristic solution. Not supported by all solvers.
 
 ## Example
 
@@ -223,7 +220,9 @@ function get_optimal_tour(cities::AbstractVector,
                           symmetric=nothing,
                           lazy_constraints=false,
                           slow=false,
-                          silent_optimizer=true,)
+                          silent_optimizer=true,
+                          initial_subtours=[],
+                          heuristic_warmstart=true)
     isnothing(optimizer) &&
         throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
@@ -232,7 +231,7 @@ function get_optimal_tour(cities::AbstractVector,
         symmetric = issymmetric(cost)
     end
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities,
-                             slow, silent_optimizer)
+                             slow, silent_optimizer, initial_subtours, heuristic_warmstart)
 end
 
 function get_optimal_tour(cost::AbstractMatrix,
@@ -241,13 +240,15 @@ function get_optimal_tour(cost::AbstractMatrix,
                           symmetric=issymmetric(cost),
                           lazy_constraints=false,
                           slow=false,
-                          silent_optimizer=true)
+                          silent_optimizer=true,
+                          initial_subtours=[],
+                          heuristic_warmstart=true)
     size(cost, 1) == size(cost, 2) ||
         throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) &&
         throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, nothing,
-                             slow, silent_optimizer)
+                             slow, silent_optimizer, initial_subtours, heuristic_warmstart)
 end
 
 function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
@@ -302,17 +303,104 @@ function _get_optimal_tour(cost::AbstractMatrix,
                            lazy_constraints,
                            cities,
                            slow,
-                           silent_optimizer)
+                           silent_optimizer,
+                           initial_subtours,
+                           heuristic_warmstart)
+    initial_subtours = copy(initial_subtours)
+    n = size(cost, 1)
+
+    # our clustering algorithm only supports symmetric distance matrices
+    # and it's not worth doing this for tiny problems
+    if symmetric && n > 10
+        # dbscan provided less useful clusters
+        # at least with this choice of radius:
+        # heuristic choice of radius parameter
+        # closest_neighbors = (minimum(@view(cost[i, [1:(i - 1); (i + 1):end]])) for i in 1:n)
+        # r = quantile(closest_neighbors, 0.9)
+        # c = Clustering.dbscan(cost, r; min_cluster_size=4, metric=nothing)
+        # for cluster in c.clusters
+        #     inds = [cluster.boundary_indices; cluster.core_indices]
+
+        c = Clustering.hclust(cost)
+        # heuristic: start with number of clusters equal to 10%
+        k = n ÷ 10
+        cluster_assignment = Clustering.cutree(c; k)
+
+        for i in 1:k
+            inds = findall(==(i), cluster_assignment)
+            # skip tiny and huge clusters
+            3 < length(inds) < 4n / 5 || continue
+            subproblem = cost[inds, inds]
+            # we could skip re-clustering and do `_basic_ilp` here,
+            # but if the clusters get big enough, it may be worth it (?)
+            (tour, _), t = @timed _get_optimal_tour(subproblem,
+                                                    optimizer,
+                                                    symmetric,
+                                                    false, # verobose
+                                                    lazy_constraints,
+                                                    cities,
+                                                    false, # slow
+                                                    silent_optimizer,
+                                                    [],
+                                                    heuristic_warmstart)
+
+            verbose &&
+                @info "Solved subcluster problem with $(size(subproblem, 1)) cities in time $t seconds"
+            push!(initial_subtours, tour)
+        end
+    end
+    return _basic_ilp(cost,
+                      optimizer,
+                      symmetric,
+                      verbose,
+                      lazy_constraints,
+                      cities,
+                      slow,
+                      silent_optimizer,
+                      initial_subtours,
+                      heuristic_warmstart)
+end
+
+function _basic_ilp(cost::AbstractMatrix,
+                    optimizer,
+                    symmetric,
+                    verbose,
+                    lazy_constraints,
+                    cities,
+                    slow,
+                    silent_optimizer,
+                    initial_subtours,
+                    heuristic_warmstart)
     has_cities = !isnothing(cities)
 
     model = Model(optimizer)
     silent_optimizer && set_silent(model)
     tour_matrix = build_tour_matrix(model, cost, symmetric)
+    for cycle in initial_subtours
+        cycle_constraint = subtour_elimination_constraint(tour_matrix, cycle; symmetric)
+        add_constraint(model, cycle_constraint)
+    end
+    local init!
+    if heuristic_warmstart
+        (heuristic_path, cost), t = @timed TravelingSalesmanHeuristics.solve_tsp(cost;
+                                                                                 quality_factor=80)
+        verbose && @info "Heuristic solve obtained cost $cost in time $t seconds"
+        init! = () -> begin
+            set_start_value.(tour_matrix, 0)
+            for i in 1:(length(heuristic_path) - 1)
+                set_start_value(tour_matrix[heuristic_path[i], heuristic_path[i + 1]], 1)
+            end
+        end
+        init!()
+    end
 
-    if has_cities && verbose
-        @info "Starting optimization." plot_cities(cities)
-    elseif verbose
-        @info "Starting optimization."
+    if verbose
+        msg = "Starting optimization with $(length(initial_subtours)) initial subtour elimination constraints."
+        if has_cities
+            @info msg plot_cities(cities)
+        else
+            @info msg
+        end
     end
 
     # counts for logging
@@ -328,54 +416,64 @@ function _get_optimal_tour(cost::AbstractMatrix,
     end
 
     num_cycles = 2 # just something > 1
-
+    local solution, obj
     while num_cycles > 1
+        # open("model.mps"; write=true) do io
+        #     return write(io, model; format=MOI.FileFormats.FORMAT_MPS)
+        # end
+        if heuristic_warmstart
+            init!()
+        end
         t = @elapsed optimize!(model)
         all_time[] += t
         status = termination_status(model)
         status == MOI.OPTIMAL || @warn("Problem status not optimal; got status $status")
-        current_tour = value.(tour_matrix)
-        num_cycles = remove_cycles!(model, tour_matrix; symmetric=symmetric)
-        tot_cycles[] += num_cycles
+        obj = objective_value(model)
+
+        solutions = [value.(tour_matrix; result=i)
+                     for i in 1:result_count(model)
+                     if primal_status(model; result=i) == MOI.FEASIBLE_POINT]
+        solution = first(solutions)
+        num_cycles, num_cycles_all = remove_cycles!(model, tour_matrix, solutions;
+                                                    symmetric=symmetric)
+
+        tot_cycles[] += num_cycles_all
         iter[] += 1
         if verbose
             if num_cycles == 1
                 description = "found a full cycle!"
             else
-                description = "disallowed $num_cycles cycles."
+                description = "disallowed $num_cycles cycles over $(length(solutions)) feasible solutions."
             end
 
             if has_cities
                 slow && sleep(max(0, SLOW_SLEEP[] - t))
                 @info "Iteration $(iter[]) took $(format_time(t)), $description" plot_tour(cities,
-                                                                                           current_tour)
+                                                                                           solution)
             else
                 @info "Iteration $(iter[]) took $(format_time(t)), $description"
             end
         end
     end
-    tot_cycles[] -= 1 # remove the true cycle
 
-    status = termination_status(model)
-    status == MOI.OPTIMAL || @warn(status)
-
-    cycles = get_cycles(value.(tour_matrix))
+    cycles = get_cycles(solution)
     length(cycles) == 1 ||
         error("Something went wrong; did not elimate all subtours. Please file an issue.")
 
     if verbose
         slow && sleep(SLOW_SLEEP[])
-        obj = objective_value(model)
         obj_string = isinteger(obj) ? @sprintf("%i", obj) : @sprintf("%.2f", obj)
         @info "Optimization finished; adaptively disallowed $(tot_cycles[]) cycles."
         @info "The optimization runs took $(format_time(all_time[])) in total."
         @info "Final path has length $(obj_string)."
-        @info "Final problem has $(num_constraints(model, VariableRef, MOI.ZeroOne)) binary variables,
-            $(num_constraints(model,
-            GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})) inequality constraints, and
-            $(num_constraints(model, GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64})) equality constraints."
+        constr_str = sprint(JuMP.show_constraints_summary, model)
+        @info """
+        Final problem has:
+
+        $constr_str
+        """
     end
-    return first(cycles), objective_value(model)
+    return only(cycles), obj
 end
 
 function make_remove_cycles_callback(model, tour_matrix, has_cities, cities, verbose,
@@ -396,14 +494,13 @@ function make_remove_cycles_callback(model, tour_matrix, has_cities, cities, ver
                 @info "Lazy constaint triggered ($(num_triggers[])); found a full cycle!" plot_tour(cities,
                                                                                                     tour_matrix_val)
             elseif verbose
-                @info "Lazy constaint triggered ($(num_triggers[])); found a full cycle!"
+                @info "Lazy constraint triggered ($(num_triggers[])); found a full cycle!"
             end
             return nothing
         end
 
         for cycle in cycles
-            constr = symmetric ? 2 * length(cycle) - 2 : length(cycle) - 1
-            cycle_constraint = @build_constraint(sum(tour_matrix[cycle, cycle]) <= constr)
+            cycle_constraint = subtour_elimination_constraint(tour_matrix, cycle; symmetric)
             MOI.submit(model, MOI.LazyConstraint(cb_data), cycle_constraint)
         end
 
@@ -417,6 +514,20 @@ function make_remove_cycles_callback(model, tour_matrix, has_cities, cities, ver
         end
     end
     return nothing
+end
+function subtour_elimination_constraint(tour_matrix, cycle; symmetric)
+    N = size(tour_matrix, 1)
+
+    # Eq. 6 of Pferschy & Stanek (10.1007/s10100-016-0437-8)
+    if length(cycle) <= (2N + 1) / 3 || !symmetric
+        constr = symmetric ? 2 * length(cycle) - 2 : length(cycle) - 1
+        return @build_constraint(sum(tour_matrix[cycle, cycle]) <= constr)
+    else
+        # TODO: handle asymmetric case here
+        # (for now we just always take the other path)
+        not_cycle = sort(setdiff(1:N, cycle))
+        return @build_constraint(sum(tour_matrix[cycle, not_cycle]) >= 2)
+    end
 end
 
 """
