@@ -309,13 +309,22 @@ function _get_optimal_tour(cost::AbstractMatrix,
     # our clustering algorithm only supports symmetric distance matrices
     # and it's not worth doing this for tiny problems
     if symmetric && n > 10
-        n = size(cost, 1)
+        # dbscan provided less useful clusters
+        # at least with this choice of radius:
         # heuristic choice of radius parameter
-        closest_neighbors = (minimum(@view(cost[i, [1:(i - 1); (i + 1):end]])) for i in 1:n)
-        r = quantile(closest_neighbors, 0.9)
-        c = Clustering.dbscan(cost, r; min_cluster_size=4, metric=nothing)
-        for cluster in c.clusters
-            inds = [cluster.boundary_indices; cluster.core_indices]
+        # closest_neighbors = (minimum(@view(cost[i, [1:(i - 1); (i + 1):end]])) for i in 1:n)
+        # r = quantile(closest_neighbors, 0.9)
+        # c = Clustering.dbscan(cost, r; min_cluster_size=4, metric=nothing)
+        # for cluster in c.clusters
+        #     inds = [cluster.boundary_indices; cluster.core_indices]
+
+        c = Clustering.hclust(cost)
+        # heuristic: start with number of clusters equal to 10%
+        k = n ÷ 10
+        cluster_assignment = Clustering.cutree(c; k)
+
+        for i in 1:k
+            inds = findall(==(i), cluster_assignment)
             # skip tiny and huge clusters
             3 < length(inds) < 4n / 5 || continue
             subproblem = cost[inds, inds]
