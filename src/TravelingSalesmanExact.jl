@@ -179,6 +179,7 @@ There are five boolean optional keyword arguments:
 * `lazy_constraints` indicates whether [lazy constraints](https://jump.dev/JuMP.jl/stable/manual/callbacks/#Lazy-constraints) should be used (which requires a [compatible solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers), like GLPK).
 * `slow` artificially sleeps after each solve to slow down the output for visualization purposes. Only takes affect if `verbose==true`.
 * `silent_optimizer` calls `JuMP.set_silent` on the resulting model to prevent the optimizer from emitting logging information.
+* `heuristic_warmstart=true`: whether or not to warmstart the solves using a heuristic solution. Not supported by all solvers.
 
 ## Example
 
@@ -220,7 +221,8 @@ function get_optimal_tour(cities::AbstractVector,
                           lazy_constraints=false,
                           slow=false,
                           silent_optimizer=true,
-                          initial_subtours=[])
+                          initial_subtours=[],
+                          heuristic_warmstart=true)
     isnothing(optimizer) &&
         throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     N = length(cities)
@@ -229,7 +231,7 @@ function get_optimal_tour(cities::AbstractVector,
         symmetric = issymmetric(cost)
     end
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, cities,
-                             slow, silent_optimizer, initial_subtours)
+                             slow, silent_optimizer, initial_subtours, heuristic_warmstart)
 end
 
 function get_optimal_tour(cost::AbstractMatrix,
@@ -239,13 +241,14 @@ function get_optimal_tour(cost::AbstractMatrix,
                           lazy_constraints=false,
                           slow=false,
                           silent_optimizer=true,
-                          initial_subtours=[])
+                          initial_subtours=[],
+                          heuristic_warmstart=true)
     size(cost, 1) == size(cost, 2) ||
         throw(ArgumentError("First argument must be a square matrix"))
     isnothing(optimizer) &&
         throw(ArgumentError("An optimizer is required if a default optimizer has not been set."))
     return _get_optimal_tour(cost, optimizer, symmetric, verbose, lazy_constraints, nothing,
-                             slow, silent_optimizer, initial_subtours)
+                             slow, silent_optimizer, initial_subtours, heuristic_warmstart)
 end
 
 function build_tour_matrix(model, cost::AbstractMatrix, symmetric::Bool)
@@ -301,7 +304,8 @@ function _get_optimal_tour(cost::AbstractMatrix,
                            cities,
                            slow,
                            silent_optimizer,
-                           initial_subtours)
+                           initial_subtours,
+                           heuristic_warmstart)
     initial_subtours = copy(initial_subtours)
     n = size(cost, 1)
 
@@ -337,7 +341,8 @@ function _get_optimal_tour(cost::AbstractMatrix,
                                                     cities,
                                                     false, # slow
                                                     silent_optimizer,
-                                                    [])
+                                                    [],
+                                                    heuristic_warmstart)
 
             verbose &&
                 @info "Solved subcluster problem with $(size(subproblem, 1)) cities in time $t seconds"
@@ -352,7 +357,8 @@ function _get_optimal_tour(cost::AbstractMatrix,
                       cities,
                       slow,
                       silent_optimizer,
-                      initial_subtours)
+                      initial_subtours,
+                      heuristic_warmstart)
 end
 
 function _basic_ilp(cost::AbstractMatrix,
@@ -363,7 +369,8 @@ function _basic_ilp(cost::AbstractMatrix,
                     cities,
                     slow,
                     silent_optimizer,
-                    initial_subtours)
+                    initial_subtours,
+                    heuristic_warmstart)
     has_cities = !isnothing(cities)
 
     model = Model(optimizer)
@@ -373,9 +380,8 @@ function _basic_ilp(cost::AbstractMatrix,
         cycle_constraint = subtour_elimination_constraint(tour_matrix, cycle; symmetric)
         add_constraint(model, cycle_constraint)
     end
-    heuristic_initialization = true
     local init!
-    if heuristic_initialization
+    if heuristic_warmstart
         (heuristic_path, cost), t = @timed TravelingSalesmanHeuristics.solve_tsp(cost;
                                                                                  quality_factor=80)
         verbose && @info "Heuristic solve obtained cost $cost in time $t seconds"
@@ -415,7 +421,7 @@ function _basic_ilp(cost::AbstractMatrix,
         # open("model.mps"; write=true) do io
         #     return write(io, model; format=MOI.FileFormats.FORMAT_MPS)
         # end
-        if heuristic_initialization
+        if heuristic_warmstart
             init!()
         end
         t = @elapsed optimize!(model)
