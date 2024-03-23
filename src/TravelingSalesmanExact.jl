@@ -1,12 +1,19 @@
 module TravelingSalesmanExact
 
-using JuMP, UnicodePlots, Logging, LinearAlgebra, Printf
+using JuMP: JuMP, @build_constraint, @constraint, @objective, @variable, Model,
+            add_constraint, callback_value, objective_value, optimize!,
+            primal_status, result_count, set_silent, set_start_value,
+            termination_status, value
+using LinearAlgebra: LinearAlgebra, Symmetric, issymmetric
+using Logging: Logging
+using Printf: Printf, @sprintf
+using UnicodePlots: UnicodePlots, lineplot
 using MathOptInterface: MathOptInterface
 using TravelingSalesmanHeuristics: TravelingSalesmanHeuristics
 using Clustering: Clustering
-using Statistics
 
 const MOI = MathOptInterface
+
 export get_optimal_tour,
        plot_cities,
        simple_parse_tsp,
