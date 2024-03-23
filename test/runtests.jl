@@ -1,6 +1,6 @@
 using TravelingSalesmanExact, Test, GLPK, HiGHS
 using TravelingSalesmanExact: format_time
-
+using ExplicitImports, Aqua
 if Sys.iswindows()
     set_default_optimizer!(HiGHS.Optimizer)
 else
@@ -40,6 +40,12 @@ function test_tour(input, opt=TravelingSalesmanExact.get_default_optimizer(); kw
         @test c ≈ tour_cost(t, input)
     end
     return t, c
+end
+
+@testset "Generic tests" begin
+    Aqua.test_all(TravelingSalesmanExact; ambiguities=false)
+    @test check_no_implicit_imports(TravelingSalesmanExact) === nothing
+    @test check_no_stale_explicit_imports(TravelingSalesmanExact) === nothing
 end
 
 @testset "`format_time`" begin
